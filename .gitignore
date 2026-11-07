@@ -11,6 +11,8 @@ dist/
 coverage/
 test-results/
 playwright-report/
+# Output of vitest 5's json / junit / html / blob reporters and attachments
+.vitest/
 # Raw output of `npm run e2e:cli` (holds the temporary HOME's real path)
 e2e-artifacts/v3.1/*.txt
 
