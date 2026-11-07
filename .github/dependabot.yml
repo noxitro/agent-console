@@ -18,7 +18,8 @@ updates:
         update-types: [minor, patch]
     ignore:
       # @types/node の major は Node の major に対応する。package.json の engines(>=22.12)の下限に合わせて
-      # 22 系に留め、Node 22 に無い API を型の段階で拒めるようにする。engines を上げたら、この指定と一緒に上げる
+      # 22 系に留め、Node 22 に無い API を型の段階で拒めるようにする。engines の下限を上げたら、
+      # package.json の @types/node の major を手で上げる(この ignore は版を書いていないので、そのまま残す)
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
 
@@ -34,7 +35,8 @@ updates:
       ui-minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # svelte-check(4.7.8 時点)は TypeScript 7 に未対応(peer は ^5 || ^6)。対応したらこの指定を外す
+      # svelte-check(4.7.8 時点)は typescript パッケージが 7 だと起動しない(peer は ^5 || ^6)。
+      # TS 7 は --tsgo で使えるが、その場合も typescript 自体は 6 のまま残す必要がある。peer が 7 を含んだらこの指定を外す
       - dependency-name: typescript
         versions: ['>=7']
 
