@@ -1,0 +1,39 @@
+{
+  "name": "agent-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser console for AI coding agent assets (skills / MCP servers / agents / commands) across Claude Code, Copilot CLI, VS Code, Visual Studio 2026 and opencode on Windows. Formerly agents-manager.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noxitro/agent-console.git"
+  },
+  "type": "module",
+  "bin": {
+    "ac": "./dist/cli.js",
+    "am": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:ui": "npm --prefix ui run build",
+    "serve": "node dist/server/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "node e2e/run-all.mjs",
+    "e2e:cli": "node e2e-artifacts/v3.1/run-e2e.mjs"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "jsonc-parser": "^3.3.1",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "playwright": "^1.64.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

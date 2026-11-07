@@ -1,0 +1,55 @@
+# CodeQL による静的解析。公開リポジトリでは無料。
+#
+# javascript-typescript … src/(エンジン・CLI・ローカルサーバー)、ui/src(Svelte の TS)、e2e/ の .mjs。
+#                         ビルドの要らない言語なので build-mode: none(ソースを読むだけ)。
+# actions               … .github/workflows/ の式の注入や権限の書き方を見る。
+# コードを動かさないので、Windows 向けのツールでも ubuntu-latest で足りる。
+# GitHub の Code scanning の「Default setup」とは併用できない(結果の送信がぶつかる)ので、そちらは無効のままにする。
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 依存やルールの更新で新しく見つかるものがあるので週次でも回す
+    - cron: '43 3 * * 1'
+  workflow_dispatch:
+
+# main と schedule は打ち切らない (打ち切ると main の解析結果が抜ける)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write   # 解析結果を Security タブに書き込む
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

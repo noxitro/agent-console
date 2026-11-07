@@ -1,0 +1,837 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`--json error reporting > puts the error object on stdout and the human text on stderr 1`] = `
+{
+  "error": {
+    "message": "agent "code-reviewer" has conflicting definitions in claude, copilot-cli, vscode. Re-run with --prefer <target> to choose one.",
+  },
+}
+`;
+
+exports[`am apply --json > reports the status of every action and the backup directory 1`] = `
+{
+  "applied": [
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "claude does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "claude",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "copilot-cli does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "copilot-cli",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "server "legacy": VS Code does not support the "sse" transport; skipped",
+      "kind": "unsupported",
+      "path": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "status": "skipped",
+      "target": "vscode",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "vscode does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "vscode",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "vs2026 does not support MCP configuration in v1",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "vs2026",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "vs2026 does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "vs2026",
+    },
+    {
+      "asset": "",
+      "assetType": "agent",
+      "detail": "agents are not managed for opencode (SPEC §10.4): its frontmatter is semantically different — "tools" is a name→boolean map rather than an allowlist, and the "permission" block has no equivalent in the claude/copilot dialects — so no safe conversion exists; the agent directory is left untouched (<HOME>/.config/opencode/agent)",
+      "kind": "unsupported",
+      "path": "",
+      "status": "skipped",
+      "target": "opencode",
+    },
+    {
+      "asset": "demo-skill",
+      "assetType": "skill",
+      "detail": "create junction to source skill",
+      "kind": "link",
+      "path": "<HOME>/.claude/skills/demo-skill",
+      "status": "done",
+      "target": "claude",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.claude.json",
+      "status": "done",
+      "target": "claude",
+    },
+    {
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.claude/agents/code-reviewer.md",
+      "status": "done",
+      "target": "claude",
+    },
+    {
+      "asset": "demo-skill",
+      "assetType": "skill",
+      "detail": "create junction to source skill",
+      "kind": "link",
+      "path": "<HOME>/.copilot/skills/demo-skill",
+      "status": "done",
+      "target": "copilot-cli",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.copilot/mcp-config.json",
+      "status": "done",
+      "target": "copilot-cli",
+    },
+    {
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.copilot/agents/code-reviewer.agent.md",
+      "status": "done",
+      "target": "copilot-cli",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "status": "done",
+      "target": "vscode",
+    },
+    {
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.github/agents/code-reviewer.agent.md",
+      "status": "done",
+      "target": "vs2026",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.config/opencode/opencode.jsonc",
+      "status": "done",
+      "target": "opencode",
+    },
+  ],
+  "backupDir": "<HOME>/.agents-manager/backups/<TS>",
+}
+`;
+
+exports[`am doctor --json > reports findings with their target and asset 1`] = `
+{
+  "findings": [
+    {
+      "asset": "demo-skill",
+      "code": "skill.non-spec-frontmatter",
+      "detail": "skill "demo-skill": frontmatter field "argument-hint" is outside the agentskills.io schema",
+      "level": "warn",
+      "path": "<HOME>/.agents/skills/demo-skill/SKILL.md",
+    },
+    {
+      "asset": "orphan-skill",
+      "code": "skill.unmanaged-copy",
+      "detail": "[copilot-cli] "orphan-skill" is a physical directory with no counterpart in the source (run \`am import --move\`)",
+      "level": "warn",
+      "path": "<HOME>/.copilot/skills/orphan-skill",
+      "target": "copilot-cli",
+    },
+  ],
+}
+`;
+
+exports[`am import --json > lists what was lifted in and how each conflict was resolved 1`] = `
+{
+  "conflicts": [
+    {
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "resolution": "claude",
+      "targets": [
+        "claude",
+        "copilot-cli",
+        "vscode",
+      ],
+    },
+  ],
+  "imported": [
+    {
+      "asset": "filesystem",
+      "assetType": "mcp",
+      "from": "claude",
+    },
+    {
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "from": "claude",
+    },
+    {
+      "asset": "extra-skill",
+      "assetType": "skill",
+      "from": "<HOME>/.claude/skills/extra-skill",
+    },
+  ],
+  "notes": [],
+  "rejected": [],
+}
+`;
+
+exports[`am inventory --json > describes the source and every target 1`] = `
+{
+  "source": {
+    "agents": [
+      {
+        "description": "Reviews changes for correctness.",
+        "enabled": true,
+        "model": "sonnet",
+        "modified": "<MTIME>",
+        "name": "code-reviewer",
+      },
+    ],
+    "commands": [],
+    "linkMode": "junction",
+    "manifestPresent": true,
+    "mcp": [
+      {
+        "enabled": true,
+        "endpoint": "https://example.invalid/mcp",
+        "modified": "<MTIME>",
+        "name": "docs",
+        "transport": "http",
+      },
+      {
+        "enabled": true,
+        "endpoint": "npx",
+        "modified": "<MTIME>",
+        "name": "filesystem",
+        "transport": "stdio",
+      },
+      {
+        "enabled": true,
+        "endpoint": "https://example.invalid/sse",
+        "modified": "<MTIME>",
+        "name": "legacy",
+        "transport": "sse",
+      },
+    ],
+    "root": "<HOME>/.agents-manager",
+    "skills": [
+      {
+        "description": "A demo skill.",
+        "enabled": true,
+        "hasSkillMd": true,
+        "modified": "<MTIME>",
+        "name": "demo-skill",
+      },
+    ],
+  },
+  "targets": [
+    {
+      "agents": [],
+      "agentsDir": "<HOME>/.claude/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "claude",
+      "mcp": [],
+      "mcpPath": "<HOME>/.claude.json",
+      "skills": [],
+      "skillsDir": "<HOME>/.claude/skills",
+    },
+    {
+      "agents": [],
+      "agentsDir": "<HOME>/.copilot/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "copilot-cli",
+      "mcp": [],
+      "mcpPath": "<HOME>/.copilot/mcp-config.json",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.copilot/skills",
+    },
+    {
+      "agents": [],
+      "agentsDir": "<HOME>/.copilot/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "vscode",
+      "mcp": [],
+      "mcpPath": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "sharesDiscoveryWith": "copilot-cli",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+    },
+    {
+      "agents": [],
+      "agentsDir": "<HOME>/.github/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "vs2026",
+      "mcp": "unsupported",
+      "mcpPath": "unsupported",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+    },
+    {
+      "agents": "unsupported",
+      "agentsDir": "unsupported",
+      "commands": [],
+      "commandsDir": "<HOME>/.config/opencode/command",
+      "enabled": true,
+      "id": "opencode",
+      "mcp": [],
+      "mcpPath": "<HOME>/.config/opencode/opencode.jsonc",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+      "unsupportedReasons": [
+        {
+          "assetType": "agent",
+          "reason": "agents are not managed for opencode (SPEC §10.4): its frontmatter is semantically different — "tools" is a name→boolean map rather than an allowlist, and the "permission" block has no equivalent in the claude/copilot dialects — so no safe conversion exists; the agent directory is left untouched (<HOME>/.config/opencode/agent)",
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`am inventory --json > reports junction destinations once the plan has been applied 1`] = `
+{
+  "source": {
+    "agents": [
+      {
+        "description": "Reviews changes for correctness.",
+        "enabled": true,
+        "model": "sonnet",
+        "modified": "<MTIME>",
+        "name": "code-reviewer",
+      },
+    ],
+    "commands": [],
+    "linkMode": "junction",
+    "manifestPresent": true,
+    "mcp": [
+      {
+        "enabled": true,
+        "endpoint": "https://example.invalid/mcp",
+        "modified": "<MTIME>",
+        "name": "docs",
+        "transport": "http",
+      },
+      {
+        "enabled": true,
+        "endpoint": "npx",
+        "modified": "<MTIME>",
+        "name": "filesystem",
+        "transport": "stdio",
+      },
+      {
+        "enabled": true,
+        "endpoint": "https://example.invalid/sse",
+        "modified": "<MTIME>",
+        "name": "legacy",
+        "transport": "sse",
+      },
+    ],
+    "root": "<HOME>/.agents-manager",
+    "skills": [
+      {
+        "description": "A demo skill.",
+        "enabled": true,
+        "hasSkillMd": true,
+        "modified": "<MTIME>",
+        "name": "demo-skill",
+      },
+    ],
+  },
+  "targets": [
+    {
+      "agents": [
+        {
+          "name": "code-reviewer",
+        },
+      ],
+      "agentsDir": "<HOME>/.claude/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "claude",
+      "mcp": [
+        {
+          "name": "docs",
+          "transport": "http",
+        },
+        {
+          "name": "filesystem",
+          "transport": "stdio",
+        },
+        {
+          "name": "legacy",
+          "transport": "sse",
+        },
+      ],
+      "mcpPath": "<HOME>/.claude.json",
+      "skills": [
+        {
+          "dest": "<HOME>/.agents/skills/demo-skill",
+          "kind": "symlink",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.claude/skills",
+    },
+    {
+      "agents": [
+        {
+          "name": "code-reviewer",
+        },
+      ],
+      "agentsDir": "<HOME>/.copilot/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "copilot-cli",
+      "mcp": [
+        {
+          "name": "docs",
+          "transport": "http",
+        },
+        {
+          "name": "filesystem",
+          "transport": "stdio",
+        },
+        {
+          "name": "legacy",
+          "transport": "sse",
+        },
+      ],
+      "mcpPath": "<HOME>/.copilot/mcp-config.json",
+      "skills": [
+        {
+          "dest": "<HOME>/.agents/skills/demo-skill",
+          "kind": "junction",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.copilot/skills",
+    },
+    {
+      "agents": [
+        {
+          "name": "code-reviewer",
+        },
+      ],
+      "agentsDir": "<HOME>/.copilot/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "vscode",
+      "mcp": [
+        {
+          "name": "docs",
+          "transport": "http",
+        },
+        {
+          "name": "filesystem",
+          "transport": "stdio",
+        },
+      ],
+      "mcpPath": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "sharesDiscoveryWith": "copilot-cli",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+    },
+    {
+      "agents": [
+        {
+          "name": "code-reviewer",
+        },
+      ],
+      "agentsDir": "<HOME>/.github/agents",
+      "commands": "unsupported",
+      "commandsDir": "unsupported",
+      "enabled": true,
+      "id": "vs2026",
+      "mcp": "unsupported",
+      "mcpPath": "unsupported",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+    },
+    {
+      "agents": "unsupported",
+      "agentsDir": "unsupported",
+      "commands": [],
+      "commandsDir": "<HOME>/.config/opencode/command",
+      "enabled": true,
+      "id": "opencode",
+      "mcp": [
+        {
+          "enabled": true,
+          "name": "docs",
+          "transport": "http",
+        },
+        {
+          "enabled": true,
+          "name": "filesystem",
+          "transport": "stdio",
+        },
+        {
+          "enabled": true,
+          "name": "legacy",
+          "transport": "http",
+        },
+      ],
+      "mcpPath": "<HOME>/.config/opencode/opencode.jsonc",
+      "skills": [
+        {
+          "kind": "directory",
+          "name": "demo-skill",
+        },
+      ],
+      "skillsDir": "<HOME>/.agents/skills",
+      "unsupportedReasons": [
+        {
+          "assetType": "agent",
+          "reason": "agents are not managed for opencode (SPEC §10.4): its frontmatter is semantically different — "tools" is a name→boolean map rather than an allowlist, and the "permission" block has no equivalent in the claude/copilot dialects — so no safe conversion exists; the agent directory is left untouched (<HOME>/.config/opencode/agent)",
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`am plan --json > lists every action, including the unsupported ones 1`] = `
+{
+  "actions": [
+    {
+      "asset": "demo-skill",
+      "assetType": "skill",
+      "detail": "create junction to source skill",
+      "kind": "link",
+      "path": "<HOME>/.claude/skills/demo-skill",
+      "target": "claude",
+    },
+    {
+      "after": "{
+  "mcpServers": {
+    "docs": {
+      "type": "http",
+      "url": "https://example.invalid/mcp"
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "server-filesystem",
+        "."
+      ]
+    },
+    "legacy": {
+      "type": "sse",
+      "url": "https://example.invalid/sse"
+    }
+  }
+}
+",
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.claude.json",
+      "target": "claude",
+    },
+    {
+      "after": "---
+name: code-reviewer
+description: Reviews changes for correctness.
+tools: Read, Grep
+model: sonnet
+---
+
+You are a meticulous code reviewer.
+",
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.claude/agents/code-reviewer.md",
+      "target": "claude",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "claude does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "target": "claude",
+    },
+    {
+      "asset": "demo-skill",
+      "assetType": "skill",
+      "detail": "create junction to source skill",
+      "kind": "link",
+      "path": "<HOME>/.copilot/skills/demo-skill",
+      "target": "copilot-cli",
+    },
+    {
+      "after": "{
+  "mcpServers": {
+    "docs": {
+      "type": "http",
+      "url": "https://example.invalid/mcp",
+      "tools": [
+        "*"
+      ]
+    },
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": [
+        "-y",
+        "server-filesystem",
+        "."
+      ],
+      "tools": [
+        "*"
+      ]
+    },
+    "legacy": {
+      "type": "sse",
+      "url": "https://example.invalid/sse",
+      "tools": [
+        "*"
+      ]
+    }
+  }
+}
+",
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.copilot/mcp-config.json",
+      "target": "copilot-cli",
+    },
+    {
+      "after": "---
+name: code-reviewer
+description: Reviews changes for correctness.
+tools:
+  - Read
+  - Grep
+model: sonnet
+---
+
+You are a meticulous code reviewer.
+",
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.copilot/agents/code-reviewer.agent.md",
+      "target": "copilot-cli",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "copilot-cli does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "target": "copilot-cli",
+    },
+    {
+      "after": "{
+  "servers": {
+    "docs": {
+      "type": "http",
+      "url": "https://example.invalid/mcp"
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "server-filesystem",
+        "."
+      ]
+    }
+  }
+}
+",
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "target": "vscode",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "server "legacy": VS Code does not support the "sse" transport; skipped",
+      "kind": "unsupported",
+      "path": "<HOME>/AppData/Roaming/Code/User/mcp.json",
+      "target": "vscode",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "vscode does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "target": "vscode",
+    },
+    {
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "vs2026 does not support MCP configuration in v1",
+      "kind": "unsupported",
+      "path": "",
+      "target": "vs2026",
+    },
+    {
+      "after": "---
+name: code-reviewer
+description: Reviews changes for correctness.
+tools:
+  - Read
+  - Grep
+model: sonnet
+---
+
+You are a meticulous code reviewer.
+",
+      "asset": "code-reviewer",
+      "assetType": "agent",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.github/agents/code-reviewer.agent.md",
+      "target": "vs2026",
+    },
+    {
+      "asset": "",
+      "assetType": "command",
+      "detail": "vs2026 does not support commands",
+      "kind": "unsupported",
+      "path": "",
+      "target": "vs2026",
+    },
+    {
+      "after": "{
+  "mcp": {
+    "docs": {
+      "type": "remote",
+      "url": "https://example.invalid/mcp",
+      "enabled": true
+    },
+    "filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "server-filesystem",
+        "."
+      ],
+      "enabled": true
+    },
+    "legacy": {
+      "type": "remote",
+      "url": "https://example.invalid/sse",
+      "enabled": true
+    }
+  }
+}
+",
+      "asset": "",
+      "assetType": "mcp",
+      "detail": "not present in target",
+      "kind": "create",
+      "path": "<HOME>/.config/opencode/opencode.jsonc",
+      "target": "opencode",
+    },
+    {
+      "asset": "",
+      "assetType": "agent",
+      "detail": "agents are not managed for opencode (SPEC §10.4): its frontmatter is semantically different — "tools" is a name→boolean map rather than an allowlist, and the "permission" block has no equivalent in the claude/copilot dialects — so no safe conversion exists; the agent directory is left untouched (<HOME>/.config/opencode/agent)",
+      "kind": "unsupported",
+      "path": "",
+      "target": "opencode",
+    },
+  ],
+}
+`;

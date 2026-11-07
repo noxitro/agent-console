@@ -1,0 +1,21 @@
+node_modules/
+dist/
+*.log
+*.tsbuildinfo
+
+# Secrets and local environment
+.env
+.env.*
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+# Raw output of `npm run e2e:cli` (holds the temporary HOME's real path)
+e2e-artifacts/v3.1/*.txt
+
+# State of local developer tools (not part of the product)
+.impeccable/
+.claude/launch.json
+.claude/settings.local.json
+.claude/worktrees/

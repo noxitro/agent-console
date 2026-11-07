@@ -1,0 +1,161 @@
+# push / PR ごとに、README の「開発」節のコマンドを次の順で回す(依存は npm ci で入れ、Playwright の Chromium を足す)。
+#   依存の導入(ルートと ui)→ tsc → vitest → svelte-check → UI のビルド → CLI の実測ゲート → ブラウザの e2e
+# 依存の既知の脆弱性は別ジョブ(依存の監査)で見る。ルールセットの必須チェックは最後の「CI 結果」だけにする
+# (Node の版を足し引きしても必須チェックの名前が変わらないように)。
+#
+# 実行 OS は Windows だけ。想定利用環境が Windows で(agent-console.bat、junction、.exe だけを起動する
+# src/server/exec.ts)、Linux では skill の junction の判定(src/adapters/copilot-cli.ts の isJunctionTarget は
+# win32 のときだけ真)が変わり、test/__snapshots__/json-output.test.ts.snap の "kind": "junction" と合わない。
+#
+# HOME の差し替え: テストと e2e は自分で一時 HOME を作る。vitest は開始時に AC_* を消し(test/setup-env.ts)、
+# CLI の実測ゲート(e2e-artifacts/v3.1/run-e2e.mjs)は子プロセスに AC_HOME と AM_HOME の両方を渡すので、
+# ここで HOME 系の変数を設定する必要は無い。
+#
+# 公開リポジトリなので、標準のランナー(windows-latest を含む)は無料。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# PR は新しい push で古い実行を打ち切る。main への push は打ち切らない(結果を全部残す)
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: テストとビルド (Windows, Node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # engines は >=22.12(vite 8 の要求。20 は 2026-04-30 で保守終了)。保守中で最も古い LTS の 22、
+        # Maintenance LTS の 24、新しく入れる人が選ぶ現行の Active LTS の 26
+        node: [22, 24, 26]
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # リポジトリに記録された改行のまま取り出す(.bat は .gitattributes で CRLF)。
+      # ランナーの Git の設定に任せると、スナップショットの改行がリポジトリの内容とずれうる
+      - name: 改行を変換しない
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+
+      - name: 依存を入れる (ルート)
+        run: npm ci
+      - name: 依存を入れる (ui)
+        run: npm --prefix ui ci
+
+      # src/server/engine-queue.test.ts は dist/server/engine-worker.js を使う(CI では無ければ失敗する)。
+      # なのでテストより先にビルドする
+      - name: ビルド (tsc)
+        run: npm run build
+      - name: 単体テスト (vitest)
+        run: npm test
+      - name: UI の型検査 (svelte-check)
+        run: npm --prefix ui run check
+      - name: UI のビルド
+        run: npm run build:ui
+      - name: CLI の実測ゲート
+        run: npm run e2e:cli
+
+      # e2e はどれも既定の headless で起動する(chromium.launch())ので、headless shell だけを入れる。
+      # S15(サーバーの守り)は Node の http の挙動に依存するので、ブラウザの e2e も全部の版で回す
+      - name: Playwright の Chromium を入れる
+        run: npx playwright install --only-shell chromium
+      - name: ブラウザの e2e (S15 → サーバー → GUI)
+        run: npm run e2e
+
+      # テストや e2e が追跡ファイルを書き換えていないこと。e2e の証跡は実行環境の一時パスを含むので、
+      # 追跡ファイルに書かれると、手元で回したときにローカルのパスが公開されてしまう
+      - name: 追跡ファイルが変わっていない
+        run: |
+          set -euo pipefail
+          changed=$(git status --porcelain --untracked-files=all)
+          if [ -n "$changed" ]; then
+            echo "::error::テストか e2e が追跡ファイルを書き換えたか、.gitignore に無いファイルを作った"
+            echo "$changed"
+            exit 1
+          fi
+
+      # 失敗の切り分け用。中身は一時 HOME に作った架空の環境に対する CLI の出力だけ
+      # (パスはランナーの一時ディレクトリ)。Playwright の e2e は画面写真を残さず、結果はログに出る
+      - name: CLI の実測ゲートの出力を残す (失敗時)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-cli-node${{ matrix.node }}
+          path: e2e-artifacts/v3.1/*.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  audit:
+    name: 依存の監査
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # npm audit は lockfile だけを読むので、依存を入れる必要は無い
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # 実行時に読み込む依存(ルートの dependencies)だけで止める。ui の依存は devDependencies だけ
+      - name: 実行時の依存 (high 以上で止める)
+        run: npm audit --omit=dev --audit-level=high
+
+      # devDependencies も含めた全体は止めずに警告にする。vitest 3 系などに既知の脆弱性があり、
+      # 直すには major を上げる必要があるので、Dependabot の PR で追う
+      - name: 開発用の依存も含めた全体 (止めない)
+        shell: bash
+        run: |
+          for dir in . ui; do
+            if ! npm --prefix "$dir" audit --audit-level=high; then
+              echo "::warning::$dir の依存(devDependencies を含む)に high 以上の既知の脆弱性がある。Dependabot の PR で直す"
+            fi
+          done
+
+  # ルールセットの必須チェックにするジョブ。上のジョブが 1 つでも成功していなければ落ちる
+  result:
+    name: CI 結果
+    needs: [test, audit]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 全ジョブが成功したか
+        shell: bash
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needs の結果: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*|*" skipped "*)
+              echo "::error::成功していないジョブがある"
+              exit 1 ;;
+          esac

@@ -1,0 +1,2 @@
+# .bat は cmd.exe が読むので CRLF に固定する (LF だけだとラベルや goto の解釈が壊れることがある)。
+*.bat text eol=crlf

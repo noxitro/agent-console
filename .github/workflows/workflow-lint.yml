@@ -1,0 +1,62 @@
+# ============================================================
+# Workflow lint
+#
+# 目的  : CI 自身 (.github/workflows/*.yml) の書き間違いを push の時点で拾う。
+#         ワークフローの式や条件の誤りは、実際に動かすまで見つからない。
+# 中身  : actionlint … ワークフローの構文・式・needs / matrix / permissions の整合を見る。
+#                      run: の bash はランナー同梱の shellcheck で検査する。
+#         (Nox / vs-extensions の同名のワークフローから、.github/scripts 用の ruff を除いたもの)
+# 取得  : 版を固定し、リリースの checksums.txt ではなく、ここに書いた SHA-256 と突き合わせる
+#         (同じ場所から取ったチェックサムでは独立した検証にならない)。版は Nox / vs-extensions と揃える。
+#         上げるときは、リリースの checksums.txt と手元で取得したファイルの両方で確かめてから書き換える。
+# 環境  : ubuntu-latest。1 回数十秒。公開リポジトリなので無料。
+#         .github 以下を変えた push だけで走る (paths で絞るので、ルールセットの必須チェックにはしない)。
+# ============================================================
+
+name: Workflow lint
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        shell: bash
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -euo pipefail
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}" -o "$archive"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum -c -
+          tar -xzf "$archive" actionlint
+          sudo install -m 0755 actionlint /usr/local/bin/actionlint
+          actionlint -version
+          # actionlint は、shellcheck が無いと run: の検査を黙って省く。気付けるよう警告にする
+          if command -v shellcheck >/dev/null; then
+            shellcheck --version
+          else
+            echo "::warning::shellcheck が無いので、run: の bash は検査されない"
+          fi
+
+      - name: actionlint
+        shell: bash
+        run: actionlint -color

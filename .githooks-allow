@@ -1,0 +1,16 @@
+# Paths the pre-publish scanner (git-hooks/scan.sh) skips.
+# One path per line, exactly as git lists it. Lines starting with # are comments.
+# Every entry says why it is here.
+
+# The bundled fonts are under the SIL Open Font License 1.1, which requires the
+# fonts' own copyright notices to ship with them. The scanner flags any copyright
+# notice that is not the repository owner's; these two are the notices OFL asks for.
+ui/public/fonts/OFL.txt
+ui/public/fonts/README.md
+
+# False positive, temporary: on CI the runner's account name is the same word as
+# the last part of the vitest runner package's name, and the scanner's "this
+# machine's user name" rule then matches that package's path in the lock file.
+# Secrets are covered separately: gitleaks scans the whole history. Remove this
+# entry once the shared scanner is fixed on its side.
+package-lock.json

@@ -1,0 +1,44 @@
+# 依存の更新を週 1 回 PR で出す。公開リポジトリなので無料。PR ごとに CI(ci.yml)が回るので、通ったものだけ取り込む。
+# npm は minor / patch をまとめて 1 本にし、major(vitest 3 → 5 など)は個別の PR にする。
+# lockfile はルートと ui/ の 2 本なので、npm は 2 つに分けて書く。
+# cooldown: 公開から 7 日経っていない版は提案しない(乗っ取られた版を掴まないため)。
+#           版の更新だけに効き、セキュリティ更新(Dependabot alerts から出る PR)は待たない。
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps"
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /ui
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps"
+    groups:
+      ui-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # svelte-check(4.7.6 時点)は TypeScript 7 に未対応(peer は ^5 || ^6)。対応したらこの指定を外す
+      - dependency-name: typescript
+        versions: ['>=7']
+
+  # GitHub Actions 自体の更新。actions/checkout@v7 のような参照が古くなるのを拾う
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "ci"
