@@ -128,8 +128,8 @@ jobs:
       - name: 実行時の依存 (high 以上で止める)
         run: npm audit --omit=dev --audit-level=high
 
-      # devDependencies も含めた全体は止めずに警告にする。vitest 3 系などに既知の脆弱性があり、
-      # 直すには major を上げる必要があるので、Dependabot の PR で追う
+      # devDependencies も含めた全体は止めずに警告にする。開発用の依存の脆弱性は、修正版が無いか
+      # major を上げないと直らないことが多く、無関係な PR まで止めてしまうため。Dependabot の PR で追う
       - name: 開発用の依存も含めた全体 (止めない)
         shell: bash
         run: |

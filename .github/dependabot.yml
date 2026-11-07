@@ -1,5 +1,5 @@
 # 依存の更新を週 1 回 PR で出す。公開リポジトリなので無料。PR ごとに CI(ci.yml)が回るので、通ったものだけ取り込む。
-# npm は minor / patch をまとめて 1 本にし、major(vitest 3 → 5 など)は個別の PR にする。
+# npm は minor / patch をまとめて 1 本にし、major は個別の PR にする。
 # lockfile はルートと ui/ の 2 本なので、npm は 2 つに分けて書く。
 # cooldown: 公開から 7 日経っていない版は提案しない(乗っ取られた版を掴まないため)。
 #           版の更新だけに効き、セキュリティ更新(Dependabot alerts から出る PR)は待たない。
@@ -16,6 +16,11 @@ updates:
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # @types/node の major は Node の major に対応する。package.json の engines(>=22.12)の下限に合わせて
+      # 22 系に留め、Node 22 に無い API を型の段階で拒めるようにする。engines を上げたら、この指定と一緒に上げる
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /ui
@@ -29,7 +34,7 @@ updates:
       ui-minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # svelte-check(4.7.6 時点)は TypeScript 7 に未対応(peer は ^5 || ^6)。対応したらこの指定を外す
+      # svelte-check(4.7.8 時点)は TypeScript 7 に未対応(peer は ^5 || ^6)。対応したらこの指定を外す
       - dependency-name: typescript
         versions: ['>=7']
 
