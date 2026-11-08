@@ -131,6 +131,18 @@ export interface InstalledRow {
   realPath?: string;
   description?: string;
   version?: string;
+  /**
+   * For a plugin row: the plugin itself (its marketplace, when it has one). For
+   * a skill, command, agent or MCP server a plugin brought: the plugin it came
+   * from. Such a row's cost is counted on the plugin's row, not on its own.
+   */
+  plugin?: PluginRef;
+  /**
+   * The other units holding a row of the same kind and name. Which one the
+   * harness uses is not stated: the order differs by harness and kind, and is
+   * not confirmed for all of them (ARCHITECTURE.md「単位の置き場所」).
+   */
+  alsoIn?: ScopeKind[];
   /** For a plugin: its components. */
   components?: { skills: string[]; commands: string[]; agents: string[]; mcpServers: string[] };
   /** For an MCP server: its transport (the definition itself is not read out). */
@@ -140,6 +152,13 @@ export interface InstalledRow {
   reach: InstalledReach[];
   findings?: InstalledFinding[];
   unreadable?: string;
+}
+
+export interface PluginRef {
+  /** As the harness records it: `name@marketplace`, or the bare name. */
+  id: string;
+  name: string;
+  marketplace?: string;
 }
 
 export interface ScopeTotal {
@@ -457,6 +476,7 @@ export function readInstalled(options: InstalledOptions = {}): InstalledJson {
   );
 
   const scopes: ScopeKind[] = root === undefined ? ["user"] : ["user", "project", "local"];
+  markAlsoIn(rows.all);
   const all = rows.all.sort(
     (a, b) =>
       scopes.indexOf(a.scope) - scopes.indexOf(b.scope) ||
@@ -481,13 +501,37 @@ export function readInstalled(options: InstalledOptions = {}): InstalledJson {
   return result;
 }
 
+/** A row a plugin brought: shown on its own, counted on the plugin's row. */
+function isPluginPart(row: InstalledRow): boolean {
+  return row.kind !== "plugin" && row.plugin !== undefined;
+}
+
+/**
+ * Rows of the same kind and name in more than one unit. Instruction files are
+ * left out: the units' files are all read and combined, so two of them are not
+ * a duplicate.
+ */
+function markAlsoIn(rows: InstalledRow[]): void {
+  const byName = new Map<string, InstalledRow[]>();
+  for (const row of rows) {
+    if (row.kind === "instructions") continue;
+    const k = `${row.kind}:${row.name.toLowerCase()}`;
+    byName.set(k, [...(byName.get(k) ?? []), row]);
+  }
+  for (const group of byName.values()) {
+    const units = [...new Set(group.map((r) => r.scope))];
+    if (units.length < 2) continue;
+    for (const row of group) row.alsoIn = units.filter((u) => u !== row.scope);
+  }
+}
+
 function totals(rows: InstalledRow[], scopes: ScopeKind[]): ScopeTotal[] {
   const out: ScopeTotal[] = [];
   for (const scope of scopes) {
     for (const harness of HARNESS_IDS) {
       const t: ScopeTotal = { scope, harness, chars: 0, tokens: 0, rows: 0, conditional: 0, unmeasured: 0 };
       for (const row of rows) {
-        if (row.scope !== scope) continue;
+        if (row.scope !== scope || isPluginPart(row)) continue;
         const reaches = row.reach.filter((r) => r.harness === harness);
         if (reaches.length === 0) continue;
         t.rows++;
@@ -947,6 +991,57 @@ function componentNames(c: PluginComponents, prefix: string): NonNullable<Instal
   };
 }
 
+function pluginRef(id: string, marketplace?: string): PluginRef {
+  const at = id.lastIndexOf("@");
+  const name = at > 0 ? id.slice(0, at) : id;
+  const mkt = marketplace ?? (at > 0 ? id.slice(at + 1) : undefined);
+  return mkt === undefined || mkt === "" ? { id, name } : { id, name, marketplace: mkt };
+}
+
+/**
+ * One row per component a plugin brought, so a skill or MCP server from a
+ * plugin is listed beside the ones the owner put there and says where it came
+ * from. Its state is the plugin's (a plugin is switched as a whole); its cost
+ * is on the plugin's row.
+ */
+function putPluginParts(
+  ctx: Context,
+  harness: HarnessId,
+  ref: PluginRef,
+  unit: ScopeKind,
+  dir: string,
+  comps: PluginComponents,
+  parent: InstalledReach,
+): void {
+  const reachFor = (via: string): InstalledReach => ({
+    harness,
+    state: parent.state,
+    via,
+    certainty: parent.certainty,
+    ...(parent.stateSource !== undefined ? { stateSource: parent.stateSource } : {}),
+    note: `プラグイン ${ref.id} の部品。有効・無効はプラグインごとに決まり、常時コストはプラグインの行で数える`,
+  });
+  const put = (kind: InstalledKind, name: string, file: string, description?: string, unreadable?: string): void => {
+    const row: Omit<InstalledRow, "id"> & { key: string } = {
+      key: `plugin:${harness}:${ref.id}:${name}`,
+      kind,
+      name,
+      scope: unit,
+      origin: "plugin",
+      path: file,
+      plugin: ref,
+      reach: [reachFor(file)],
+    };
+    if (description !== undefined) row.description = description;
+    if (unreadable !== undefined) row.unreadable = unreadable;
+    ctx.rows.put(row);
+  };
+  for (const sk of comps.skills) put("skill", sk.name, path.join(sk.dir, "SKILL.md"), sk.description, sk.unreadable);
+  for (const c of comps.commands) put("command", c.name, c.file, c.description ?? firstLine(c.body), c.unreadable);
+  for (const a of comps.agents) put("agent", a.name, a.file, a.description, a.unreadable);
+  for (const m of comps.mcpServers) put("mcp", m, path.join(dir, ".mcp.json"));
+}
+
 function boolState(v: unknown): ReachState {
   return v === true ? "enabled" : v === false ? "disabled" : "unknown";
 }
@@ -1004,10 +1099,12 @@ function collectClaudePlugins(ctx: Context): void {
           scope: unit,
           origin: "plugin",
           path: installPath ?? file,
+          plugin: pluginRef(id),
           reach: [reach],
         };
         if (typeof raw["version"] === "string") row.version = raw["version"];
         if (comps !== undefined) row.components = componentNames(comps, name);
+        if (comps !== undefined && installPath !== undefined) putPluginParts(ctx, "claude", pluginRef(id), unit, installPath, comps, reach);
         else row.findings = [{ code: "plugin.install-missing", level: "error", detail: `記録にある導入先が無い: ${installPath ?? "(記録に無い)"}` }];
         ctx.rows.put(row);
       }
@@ -1029,6 +1126,7 @@ function collectClaudePlugins(ctx: Context): void {
         scope: unit,
         origin: "config",
         path: l.file,
+        plugin: pluginRef(id),
         reach: [{ harness: "claude", state: boolState(v), via: `${l.file}#enabledPlugins`, certainty: "official", stateSource: `${l.file}#enabledPlugins`, note: "導入の記録が無い(この単位で宣言だけされている)" }],
         findings: [{ code: "plugin.enabled-not-installed", level: "warn", detail: "enabledPlugins にあるが、導入の記録が無い" }],
       });
@@ -1069,6 +1167,16 @@ function collectCopilotPlugins(ctx: Context): void {
             ].join("")
           : "",
       );
+      const ref = pluginRef(id, mkt.name === "_direct" ? "" : mkt.name);
+      const reach: InstalledReach = {
+        harness: "copilot",
+        state,
+        via: dir,
+        certainty: "official",
+        ...(flag !== null ? { stateSource: flag.source } : { note: "enabledPlugins に記録が無い" }),
+        cost,
+        costBasis: "部品(skill・agent)の 1 件分の合計(skill の location は推測)",
+      };
       const row: Omit<InstalledRow, "id"> & { key: string } = {
         key: `copilot:${id}`,
         kind: "plugin",
@@ -1076,21 +1184,13 @@ function collectCopilotPlugins(ctx: Context): void {
         scope: "user",
         origin: "plugin",
         path: dir,
+        plugin: ref,
         components: componentNames(comps, name),
-        reach: [
-          {
-            harness: "copilot",
-            state,
-            via: dir,
-            certainty: "official",
-            ...(flag !== null ? { stateSource: flag.source } : { note: "enabledPlugins に記録が無い" }),
-            cost,
-            costBasis: "部品(skill・agent)の 1 件分の合計(skill の location は推測)",
-          },
-        ],
+        reach: [reach],
       };
       if (version !== undefined) row.version = version;
       ctx.rows.put(row);
+      putPluginParts(ctx, "copilot", ref, "user", dir, comps, reach);
     }
   }
   // Declared in the repository's settings (Copilot installs these automatically).
@@ -1108,6 +1208,7 @@ function collectCopilotPlugins(ctx: Context): void {
         scope: unit,
         origin: "config",
         path: l.file,
+        plugin: pluginRef(id),
         reach: [
           {
             harness: "copilot",
