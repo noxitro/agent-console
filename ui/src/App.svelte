@@ -132,6 +132,34 @@
    * inside is not reliably announced, and one rendered behind an open modal's
    * inert background is not announced at all.
    */
+  /**
+   * Whether the last thing the owner did was change what the list shows — a tab,
+   * the search, a filter. The table's count used to be a live region of its
+   * own, a second voice beside this one; it now speaks here, after any operation
+   * in progress and before the result of an earlier one, which has already been
+   * heard. Starting any operation hands the region back to that operation.
+   */
+  let narrowed = $state(false);
+
+  $effect(() => {
+    if (
+      session.surveyStatus === "running" ||
+      session.diffStatus === "running" ||
+      session.writeStatus === "running" ||
+      session.assetBusy
+    ) {
+      narrowed = false;
+    }
+  });
+
+  /** The table's count as a sentence; nothing while there is no reading to count. */
+  const countAnnouncement = $derived.by(() => {
+    const total = session.allRows.length;
+    if (session.surveyStatus !== "ready" && total === 0) return "";
+    const shown = session.rows.length;
+    return shown === total ? `${total} 件を表示しています。` : `${total} 件中 ${shown} 件を表示しています。`;
+  });
+
   const announcement = $derived.by(() => {
     // Focus moves to the notice, which reads it; saying it here too would read it twice.
     if (serverState === "stopped") return "";
@@ -147,6 +175,7 @@
     if (session.diffStatus === "running") return "差分を取得中です。";
     if (session.assetBusy) return "資産の設定を変更中です。";
     if (stopError !== "") return `終了できませんでした: ${stopError}`;
+    if (narrowed && countAnnouncement !== "") return countAnnouncement;
     if (session.writeStatus === "done") {
       if (session.notApplied.length > 0) {
         return `適用は完了しましたが、確認画面に出した操作のうち ${session.notApplied.length} 件は実行されませんでした。PLAN の記録を確認してください。`;
@@ -264,7 +293,10 @@
           type="button"
           class="tab"
           aria-current={session.tab === tab.type ? "page" : undefined}
-          onclick={() => session.setTab(tab.type)}
+          onclick={() => {
+            session.setTab(tab.type);
+            narrowed = true;
+          }}
         >
           {tab.label}
         </button>
@@ -483,12 +515,15 @@
         onDiff={() => void session.diff()}
         onQuery={(value) => {
           session.query = value;
+          narrowed = true;
         }}
         onFilter={(value) => {
           session.filter = value;
+          narrowed = true;
         }}
         onTargetFilter={(value) => {
           session.targetFilter = value;
+          narrowed = true;
         }}
         onScopeFilter={(value) => {
           session.scopeFilter = value;
@@ -519,6 +554,7 @@
     <StatusDrawer
       which={session.drawer}
       doctor={session.findings}
+      surveyStatus={session.surveyStatus}
       plan={session.plan}
       applied={session.applied}
       unconfirmed={session.unconfirmed}
@@ -650,6 +686,22 @@
   .tab:focus-visible {
     outline: 2px solid var(--ink);
     outline-offset: -2px;
+  }
+
+  /* A contrast theme repaints the ink fill to Canvas, and the selected tab
+     looked like the rest (app.css: Forced colours). */
+  @media (forced-colors: active) {
+    .tab[aria-current="page"] {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    /* Frozen (app.css): the selection recedes a step instead of vanishing. */
+    .app--frozen .tab[aria-current="page"] {
+      background: GrayText;
+      color: Canvas;
+    }
   }
 
   /* A wrapper that only carries `inert`; it must not become a layout box. */

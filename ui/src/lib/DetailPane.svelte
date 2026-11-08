@@ -509,43 +509,14 @@
     color: var(--ink-2);
   }
 
+  /* The switch and the badge are shared with the table (app.css). The pane has
+     room for a taller switch, and a ring set a little further out. */
+  .toggle {
+    min-height: 1.9rem;
+  }
+
   .toggle:focus-visible {
-    outline: 2px solid var(--ink);
     outline-offset: 2px;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
-    border: 1px solid var(--rule-strong);
-    font-family: var(--mono);
-    font-size: var(--t-micro);
-    color: var(--ink-2);
-  }
-
-  .badge--match {
-    color: var(--pass-text);
-    border-color: var(--pass);
-    background: var(--pass-wash);
-  }
-
-  .badge--pending {
-    color: var(--fault-text);
-    border-color: var(--fault);
-    background: var(--fault-wash);
-  }
-
-  .badge--unsupported,
-  .badge--unknown {
-    border-style: dashed;
-  }
-
-  /* Delivered, and switched off on the far side (SPEC §10.3): solid, quiet. */
-  .badge--off {
-    background: var(--paper-inset);
   }
 
   /* Findings ---------------------------------------------------------- */
@@ -601,27 +572,4 @@
     padding: 0 0.15em;
   }
 
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--gap-2);
-    min-height: 1.9rem;
-    padding: 0 var(--gap-2);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper);
-    font-size: var(--t-small);
-    cursor: pointer;
-  }
-
-  .toggle__dot {
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    border: 1px solid var(--ink-2);
-  }
-
-  .toggle[aria-checked="true"] .toggle__dot {
-    background: var(--pass);
-    border-color: var(--pass);
-  }
 </style>
