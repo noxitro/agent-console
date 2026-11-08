@@ -732,7 +732,8 @@ describe("the rendered row keeps the composite-widget contract", () => {
   });
 
   it("announces the row's selected state and gives the table grid semantics", () => {
-    expect(rowMarkup).toContain("aria-selected={row.name === selected}");
+    // By key: a project row and a 個人 row may share a name (a 個人 row's key is its name).
+    expect(rowMarkup).toContain("aria-selected={row.key === selected}");
     expect(body).toContain('<table role="grid"');
   });
 
@@ -783,15 +784,16 @@ describe("segmented controls cost one tab stop each, not one per option", () => 
     expect(nextSegmentIndex("ArrowRight", 0, 0)).toBeNull();
   });
 
-  it("wires both groups in the markup rather than only the new one", () => {
+  it("wires every group in the markup rather than only the new one", () => {
     const source = fs.readFileSync(
       new URL("../ui/src/lib/AssetTable.svelte", import.meta.url),
       "utf8",
     );
     const toolbar = source.slice(source.indexOf('<div class="toolbar">'), source.indexOf("<!-- The scroller"));
-    expect(toolbar.match(/role="radiogroup"/g) ?? []).toHaveLength(2);
-    expect(toolbar.match(/tabindex=\{segmentTabIndex\(/g) ?? []).toHaveLength(2);
-    expect(toolbar.match(/moveSegment\(/g) ?? []).toHaveLength(2);
+    // 単位 (the scope segment), the state filter and TARGET.
+    expect(toolbar.match(/role="radiogroup"/g) ?? []).toHaveLength(3);
+    expect(toolbar.match(/tabindex=\{segmentTabIndex\(/g) ?? []).toHaveLength(3);
+    expect(toolbar.match(/moveSegment\(/g) ?? []).toHaveLength(3);
   });
 });
 

@@ -16,6 +16,7 @@
     DELIVERY_MARK,
     DETAIL_FACT_LABEL,
     formatDate,
+    SCOPE_LABEL,
     secondColumnValue,
     type AssetRow,
   } from "./assets.js";
@@ -64,6 +65,33 @@
     </header>
 
     <dl class="facts">
+      <div class="facts__wide">
+        <dt>単位</dt>
+        <dd>
+          {SCOPE_LABEL[row.scope]}
+          {#if row.unverified === true}
+            <span class="unverified">未確認 — 一部のターゲットがこの置き場所を読むことは、公式文書で確かめられていません</span>
+          {/if}
+          {#if row.project !== undefined}<span class="path">プロジェクト: {row.project}</span>{/if}
+          {#if row.scopePath !== undefined}
+            <span class="path">{row.scopePath}{row.scopeEntry !== undefined ? ` › ${row.scopeEntry}` : ""}</span>
+          {/if}
+          {#if row.overriddenIn !== undefined}
+            <!-- Stated in the pane, not in a tooltip: where this 個人 asset does not apply. -->
+            <ul class="overrides">
+              {#each row.overriddenIn as o, i (o.project + o.target + i)}
+                <li>{o.target}: {o.project} では{SCOPE_LABEL[o.by]}の同名の定義が優先され、この個人の定義は効いていません</li>
+              {/each}
+            </ul>
+          {/if}
+        </dd>
+      </div>
+      {#if row.readOnly}
+      <div>
+        <dt>状態</dt>
+        <dd>読み取りのみ(この画面からは切り替えも削除もしません)</dd>
+      </div>
+      {:else}
       <div>
         <dt>状態</dt>
         <dd>
@@ -88,6 +116,7 @@
           </button>
         </dd>
       </div>
+      {/if}
       <div>
         <!--
           One slot, named for the kind in it: バージョン for a skill,
@@ -116,6 +145,7 @@
           {/if}
         </dd>
       </div>
+      {#if !row.readOnly}
       <div class="facts__wide">
         <dt>配布先の指定</dt>
         <dd>
@@ -124,11 +154,12 @@
             : row.declaredTargets.join(", ")}
         </dd>
       </div>
+      {/if}
     </dl>
 
     <section class="targets" aria-label="適用先エージェントの状態">
-      <h3>適用先エージェント</h3>
-      {#if !hasPlan}
+      <h3>{row.readOnly ? "読むエージェント" : "適用先エージェント"}</h3>
+      {#if !hasPlan && !row.readOnly}
         <!--
           SPEC §9.4, stated rather than implied. Without a plan the three states
           cannot be told apart, so the list shows what it *does* know (the path)
@@ -216,6 +247,12 @@
                   >{delivery.action.detail}</span
                 >
               {/if}
+            {:else if delivery.state === "shadowed" && delivery.shadowedBy !== undefined}
+              <span class="targets__detail"
+                >{SCOPE_LABEL[delivery.shadowedBy.scope]}の同名の定義が優先されます: {delivery.shadowedBy.path}{delivery.shadowedBy.entry !== undefined ? ` › ${delivery.shadowedBy.entry}` : ""}</span
+              >
+            {:else if delivery.state === "unverified"}
+              <span class="targets__detail">このターゲットがここを読むことは、公式文書で確かめられていません(未確認)。</span>
             {:else if delivery.state === "unsupported" && delivery.reason !== undefined}
               <!--
                 SPEC §10.4: 非対応 is a decision with a reason (opencode's agent
@@ -272,6 +309,7 @@
       the label now says so before the press, and the ellipsis marks it as the
       one that opens a confirmation.
     -->
+    {#if !row.readOnly}
     <footer class="detail__ops">
       <button
         type="button"
@@ -310,6 +348,7 @@
         >)からのみ。各ツールに配布済みの実体は <code>apply --prune</code> の担当です。
       </p>
     </footer>
+    {/if}
   {/if}
 </aside>
 
@@ -324,6 +363,22 @@
     overflow: auto;
     background: var(--paper);
     border: 1px solid var(--rule-strong);
+  }
+
+  .unverified {
+    display: inline-block;
+    margin-left: var(--gap-2);
+    padding: 0 var(--gap-1);
+    border: 1px dashed var(--rule-strong);
+    color: var(--ink-2);
+    font-size: var(--t-small);
+  }
+
+  .overrides {
+    margin: var(--gap-1) 0 0;
+    padding-left: 1.2em;
+    font-size: var(--t-small);
+    color: var(--ink-2);
   }
 
   .detail__empty {

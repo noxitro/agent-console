@@ -19,6 +19,10 @@ import {
   type InventoryTarget,
   type Plan,
   type PlanAction,
+  type Scope,
+  type ScopePlace,
+  type ScopedAsset,
+  type Scopes,
   type SourceAgent,
   type SourceCommand,
   type SourceMcp,
@@ -36,7 +40,27 @@ import {
  * `unknown` is the value that exists because the alternative is a lie: without
  * a plan, 「差分あり」 cannot be ruled out, so 「整合」 cannot be asserted.
  */
-export type DeliveryState = "unsupported" | "pending" | "match" | "off" | "absent" | "unknown";
+export type DeliveryState =
+  | "unsupported"
+  | "pending"
+  | "match"
+  | "off"
+  | "absent"
+  | "unknown"
+  /*
+   * The four below belong to rows of the project and local scopes, which this
+   * tool does not distribute and which therefore have no delivery to be in sync
+   * with. They answer 「このターゲットはこの置き場所を読むか」 instead, from the
+   * engine's table of locations (S11 / S12).
+   */
+  /** The target reads this place, and nothing outranks it there. */
+  | "present"
+  /** The target reads this place, and a higher-precedence place wins the name. */
+  | "shadowed"
+  /** The place exists; that this target reads it is not officially documented. */
+  | "unverified"
+  /** The target does not read this place. */
+  | "outside";
 
 export const DELIVERY_LABEL: Record<DeliveryState, string> = {
   unsupported: "非対応",
@@ -45,6 +69,10 @@ export const DELIVERY_LABEL: Record<DeliveryState, string> = {
   off: "適用済み(ターゲット側で無効)",
   absent: "未配布",
   unknown: "PLAN 未取得",
+  present: "この単位から読む",
+  shadowed: "上書きされて効いていない",
+  unverified: "読むかは未確認",
+  outside: "読まない置き場所",
 };
 
 /** The badge glyph each state carries, per the surface brief. */
@@ -57,6 +85,10 @@ export const DELIVERY_MARK: Record<DeliveryState, string> = {
   off: "○",
   absent: "—",
   unknown: "?",
+  present: "●",
+  shadowed: "↓",
+  unverified: "◌",
+  outside: "·",
 };
 
 export interface Delivery {
@@ -86,6 +118,8 @@ export interface Delivery {
    * travels beside the state and marks the row 不良 (`AssetRow.hasFault`).
    */
   unreadable?: string;
+  /** For a project / local row: the higher-precedence place that wins the name. */
+  shadowedBy?: ScopePlace;
 }
 
 /** Does this target hold the named asset right now? */
@@ -246,8 +280,35 @@ export function deliveryFor(
 
 /** One line of the asset table, whatever its kind. */
 export interface AssetRow {
+  /**
+   * What identifies the row on screen. A 個人 row is keyed by its name, exactly
+   * as before the scope layer; a project or local row also carries its scope,
+   * project and place, because the same name can sit in several of them.
+   */
+  key: string;
   type: AssetType;
   name: string;
+  /** 個人 / プロジェクト / ローカル. */
+  scope: Scope;
+  /** Where the asset is, for the scope column (absent when not yet known). */
+  scopePath?: string;
+  /** The key inside `scopePath` holding it, for a file holding many projects. */
+  scopeEntry?: string;
+  /** The project root, for project and local rows. */
+  project?: string;
+  /**
+   * Nothing on this row can be switched or removed: it is not in the source of
+   * truth this tool writes (P2 writes nothing outside `~/.agent-console`).
+   */
+  readOnly: boolean;
+  /** Some target's reading of this place is not officially documented (未確認). */
+  unverified?: boolean;
+  /** Every target that reads this place has a higher-precedence one winning. */
+  shadowedEverywhere?: boolean;
+  /** Some, but not all, of the targets reading it have one winning. */
+  shadowedSomewhere?: boolean;
+  /** For a 個人 row: projects where a project or local entry overrides it. */
+  overriddenIn?: { target: TargetId; project: string; by: Scope }[];
   /** Present for skills and agents; MCP servers have no description. */
   description?: string;
   version?: string;
@@ -302,7 +363,19 @@ function buildRow(
     // no asset, so `findingsFor` cannot attach it to this row. Without this the
     // row read 「差分あり」 and nothing else about a file the target cannot use.
     deliveries.some((d) => d.unreadable !== undefined);
-  return { type, name, enabled, deliveries, findings, hasPending, hasFault, ...extra };
+  return {
+    key: name,
+    type,
+    name,
+    scope: "user",
+    readOnly: false,
+    enabled,
+    deliveries,
+    findings,
+    hasPending,
+    hasFault,
+    ...extra,
+  };
 }
 
 export function skillRows(
@@ -371,7 +444,86 @@ export function commandRows(
   );
 }
 
+/**
+ * The 個人 rows of a tab, plus what the scope layer knows about them — where
+ * the source keeps that kind, and the projects in which another scope wins the
+ * name — followed by the project and local rows. Without `scopes` the result
+ * is exactly the rows of before (key = name, no path).
+ */
 export function rowsFor(
+  type: AssetType,
+  inventory: Inventory,
+  doctor: Doctor | null,
+  plan: Plan | null,
+  scopes: Scopes | null = null,
+): AssetRow[] {
+  const rows = userRowsFor(type, inventory, doctor, plan);
+  if (scopes === null) return rows;
+  const sourcePath = scopes.userSources[type];
+  return [
+    ...rows.map((row) => {
+      const overriddenIn = scopes.shadows
+        .filter((s) => s.assetType === type && s.name === row.name)
+        .map((s) => ({ target: s.target, project: s.project, by: s.by.scope }));
+      return {
+        ...row,
+        ...(sourcePath !== undefined ? { scopePath: sourcePath } : {}),
+        ...(overriddenIn.length > 0 ? { overriddenIn } : {}),
+      };
+    }),
+    ...scopedRows(type, inventory, scopes),
+  ];
+}
+
+/** A project or local asset, as a row: one per place, whatever reads it. */
+export function scopedRow(asset: ScopedAsset, inventory: Inventory): AssetRow {
+  const deliveries: Delivery[] = inventory.targets.map((target) => {
+    const reader = asset.readers.find((r) => r.target === target.id);
+    const state: DeliveryState =
+      reader === undefined
+        ? "outside"
+        : reader.shadowedBy !== undefined
+          ? "shadowed"
+          : reader.unverified === true
+            ? "unverified"
+            : "present";
+    return {
+      target: target.id,
+      state,
+      ...(reader !== undefined ? { path: asset.path } : {}),
+      ...(reader?.shadowedBy !== undefined ? { shadowedBy: reader.shadowedBy } : {}),
+    };
+  });
+  const shadowed = asset.readers.filter((r) => r.shadowedBy !== undefined).length;
+  return {
+    key: [asset.scope, asset.project, asset.path, asset.entry ?? "", asset.name].join("\u0000"),
+    type: asset.assetType,
+    name: asset.name,
+    scope: asset.scope,
+    scopePath: asset.path,
+    ...(asset.entry !== undefined ? { scopeEntry: asset.entry } : {}),
+    project: asset.project,
+    readOnly: true,
+    // Not this tool's switch: a project asset is on for whoever reads it, and
+    // the row draws no switch (it would be a control that writes nothing).
+    enabled: true,
+    ...(asset.description !== undefined ? { description: asset.description } : {}),
+    ...(asset.kindNote !== undefined ? { kindNote: asset.kindNote } : {}),
+    ...(asset.readers.some((r) => r.unverified === true) ? { unverified: true } : {}),
+    ...(shadowed > 0 && shadowed === asset.readers.length ? { shadowedEverywhere: true } : {}),
+    ...(shadowed > 0 && shadowed < asset.readers.length ? { shadowedSomewhere: true } : {}),
+    deliveries,
+    findings: [],
+    hasPending: false,
+    hasFault: asset.unreadable !== undefined,
+  };
+}
+
+export function scopedRows(type: AssetType, inventory: Inventory, scopes: Scopes): AssetRow[] {
+  return scopes.assets.filter((a) => a.assetType === type).map((a) => scopedRow(a, inventory));
+}
+
+function userRowsFor(
   type: AssetType,
   inventory: Inventory,
   doctor: Doctor | null,
@@ -455,7 +607,53 @@ export function relatesToTarget(row: AssetRow, target: TargetFilter): boolean {
   if (row.declaredTargets !== undefined && !row.declaredTargets.includes(target)) return false;
   const delivery = row.deliveries.find((d) => d.target === target);
   if (delivery === undefined) return false;
-  return delivery.state !== "unsupported";
+  return delivery.state !== "unsupported" && delivery.state !== "outside";
+}
+
+/* ------------------------------------------------------------------ */
+/* Scope narrowing (ARCHITECTURE「単位とプロジェクト」)                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The scope segment. `user` is the default and shows exactly the rows of
+ * before the scope layer existed; `all` adds the project and local rows.
+ */
+export type ScopeFilter = "all" | Scope;
+
+export const SCOPE_FILTERS: readonly ScopeFilter[] = ["all", "user", "project", "local"] as const;
+
+export const SCOPE_LABEL: Record<Scope, string> = {
+  user: "個人",
+  project: "プロジェクト",
+  local: "ローカル",
+};
+
+export const SCOPE_FILTER_LABEL: Record<ScopeFilter, string> = {
+  all: "すべて",
+  ...SCOPE_LABEL,
+};
+
+/**
+ * Narrow to one scope and, for the project and local scopes, optionally one
+ * project (`null`: every project). A 個人 row belongs to no project, so a
+ * project choice never hides it under 「すべて」.
+ */
+export function filterScope(
+  rows: readonly AssetRow[],
+  scope: ScopeFilter,
+  project: string | null = null,
+): AssetRow[] {
+  return rows.filter((row) => {
+    if (scope !== "all" && row.scope !== scope) return false;
+    if (project !== null && row.scope !== "user" && row.project !== project) return false;
+    return true;
+  });
+}
+
+/** The last path segment, for a project picker that has to fit a toolbar. */
+export function projectLabel(root: string): string {
+  const parts = root.split(/[\\/]/).filter((part) => part !== "");
+  return parts[parts.length - 1] ?? root;
 }
 
 /**
@@ -491,9 +689,15 @@ export function describeNarrowings(
   target: TargetFilter,
   filter: RowFilter,
   query: string,
+  scope: ScopeFilter = "user",
+  project: string | null = null,
 ): string[] {
   return [
     `種別: ${ASSET_TABS.find((t) => t.type === tab)?.label ?? tab}`,
+    // 個人 is the default and is what apply writes, so it is not a narrowing
+    // worth a caveat; any other position is.
+    ...(scope !== "user" ? [`単位: ${SCOPE_FILTER_LABEL[scope]}`] : []),
+    ...(scope !== "user" && project !== null ? [`プロジェクト: ${project}`] : []),
     ...(target !== "all" ? [`ターゲット: ${TARGET_FILTER_LABEL[target]}`] : []),
     ...(filter !== "all" ? [`表示: ${FILTER_LABEL[filter]}`] : []),
     ...(query.trim() !== "" ? [`検索: 「${query.trim()}」`] : []),
@@ -600,7 +804,15 @@ export type EmptyReason =
   /** The target narrowing alone emptied it, and dropping it brings back N. */
   | { kind: "target-narrowed"; target: TargetFilter; restored: number }
   /** Search or the state filter emptied it. */
-  | { kind: "narrowed" };
+  | { kind: "narrowed" }
+  /** The project / local scope was asked for and its reading is still running. */
+  | { kind: "scopes-reading" }
+  /** The project / local scope was asked for and could not be read. */
+  | { kind: "scopes-failed" }
+  /** The scope layer ran and found no project to read. */
+  | { kind: "no-projects" }
+  /** The scope (and project) chosen holds nothing of this kind. */
+  | { kind: "none-in-scope"; scope: ScopeFilter };
 
 export function emptyReason(input: {
   surveyStatus: ReadState;
@@ -612,8 +824,15 @@ export function emptyReason(input: {
   filter: RowFilter;
   targetFilter: TargetFilter;
   hasPlan: boolean;
+  /** The scope segment; absent means 個人, the default. */
+  scope?: ScopeFilter;
+  /** How the scope layer's own reading stands (`ac scopes`). */
+  scopesStatus?: ReadState;
+  /** Projects discovered, once the scope layer has been read. */
+  projectCount?: number;
 }): EmptyReason {
   const { surveyStatus, diffStatus, total, totalIgnoringTarget } = input;
+  const scope = input.scope ?? "user";
 
   // `total === 0` is part of the test, not an optimisation. A *re-survey* runs
   // against an inventory that is still on screen (`survey()` only clears it on
@@ -628,6 +847,15 @@ export function emptyReason(input: {
 
   if (total > 0 && input.filter === "pending" && !input.hasPlan) {
     return diffStatus === "running" ? { kind: "plan-running" } : { kind: "needs-plan" };
+  }
+
+  if (total === 0 && scope !== "user") {
+    // 「無い」 needs a reading of the scope layer behind it, exactly as the
+    // user level needs a survey: a failed or running `ac scopes` is not zero.
+    if (input.scopesStatus === "failed") return { kind: "scopes-failed" };
+    if (input.scopesStatus !== "ready") return { kind: "scopes-reading" };
+    if (scope !== "all" && input.projectCount === 0) return { kind: "no-projects" };
+    return { kind: "none-in-scope", scope };
   }
 
   if (total === 0) return { kind: "none-of-kind" };
@@ -658,6 +886,14 @@ export function emptyMessage(reason: EmptyReason): string {
       return `${TARGET_FILTER_LABEL[reason.target]} に関係する資産はありません(ターゲット絞り込みを「すべて」に戻すと ${reason.restored} 件が出ます)。`;
     case "narrowed":
       return "条件に一致する資産はありません(検索語かフィルタを変えてください)。";
+    case "scopes-reading":
+      return "プロジェクトとローカルの単位を読み取っています。";
+    case "scopes-failed":
+      return "プロジェクトとローカルの単位を読み取れませんでした。この一覧は空ではなく、未取得です。個人の単位は「個人」で見られます。";
+    case "no-projects":
+      return "プロジェクトが見つかりませんでした(Claude Code・Copilot CLI・VS Code が記録しているフォルダのうち、実在して git の中にあるものがありません)。";
+    case "none-in-scope":
+      return `${SCOPE_FILTER_LABEL[reason.scope]}の単位に、この種別の資産はありません。`;
   }
 }
 
@@ -669,7 +905,9 @@ export function isUnmeasured(reason: EmptyReason): boolean {
   return (
     reason.kind === "surveying" ||
     reason.kind === "survey-failed" ||
-    reason.kind === "unsurveyed"
+    reason.kind === "unsurveyed" ||
+    reason.kind === "scopes-reading" ||
+    reason.kind === "scopes-failed"
   );
 }
 

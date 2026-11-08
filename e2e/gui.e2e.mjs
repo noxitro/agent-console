@@ -16,6 +16,16 @@ import { assert, checks, makeHome, seedMachine, startServer, writeFile } from ".
 
 const home = makeHome("ac-e2e-gui-");
 seedMachine(home);
+// P2「単位とプロジェクト」: one git working tree that Claude Code has recorded,
+// with a project skill and a local MCP server, so the scope segment has rows.
+const projectRoot = path.join(home, "work", "proj");
+fs.mkdirSync(path.join(projectRoot, ".git"), { recursive: true });
+writeFile(home, "work/proj/.claude/skills/proj-skill/SKILL.md", "---\nname: proj-skill\ndescription: A project skill\n---\n\n# proj-skill\n");
+writeFile(
+  home,
+  ".claude.json",
+  `${JSON.stringify({ projects: { [projectRoot.split(path.sep).join("/")]: { mcpServers: { "local-db": { command: "db" } } } } }, null, 2)}\n`,
+);
 const server = await startServer(home);
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1400, height: 992 } });
@@ -85,8 +95,41 @@ try {
     return `${before} → ${after.replace(/\s+/g, " ")}`;
   });
 
+  await t.check("G5b the scope segment defaults to 個人 and switches to the project and local scopes", async () => {
+    const group = page.getByRole("radiogroup", { name: "単位で絞り込む" });
+    const radio = (name) => group.getByRole("radio", { name, exact: true });
+    assert((await radio("個人").getAttribute("aria-checked")) === "true", "個人 is not the default");
+    const personal = await rowNames();
+    assert(!personal.includes("proj-skill"), `project row shown under 個人: ${personal}`);
+
+    await radio("プロジェクト").click();
+    await page.locator('table[aria-label="資産一覧"] tbody tr', { hasText: "proj-skill" }).waitFor();
+    const project = await rowNames();
+    assert(project.length === 1 && project[0] === "proj-skill", `project rows: ${project}`);
+    const table = page.locator('table[aria-label="資産一覧"]');
+    // Read-only: no switch and no delete on a project row.
+    assert((await table.getByRole("switch").count()) === 0, "a project row draws a switch");
+    assert((await table.getByRole("button", { name: /をソースから削除$/ }).count()) === 0, "a project row draws a delete button");
+    assert((await table.getByText("読み取りのみ").count()) === 1, "read-only marker missing");
+    assert((await page.getByRole("combobox", { name: "プロジェクト" }).count()) === 1, "project picker missing");
+
+    await page.getByRole("button", { name: "MCP", exact: true }).click();
+    await radio("ローカル").click();
+    const local = await rowNames();
+    assert(local.length === 1 && local[0] === "local-db", `local rows: ${local}`);
+
+    await radio("個人").click();
+    await page.getByRole("button", { name: "SKILLS", exact: true }).click();
+    const back = await rowNames();
+    assert(back.join(",") === personal.join(","), `個人 did not restore: ${back}`);
+    assert((await page.getByRole("combobox", { name: "プロジェクト" }).count()) === 0, "picker shown under 個人");
+    return `個人=${personal.join(",")} プロジェクト=${project.join(",")} ローカル=${local.join(",")}`;
+  });
+
   await t.check("G6 selecting a row fills the detail pane", async () => {
-    await page.locator('table[aria-label="資産一覧"] tbody tr', { hasText: "demo-skill" }).click();
+    // The name cell, not the row's centre: since the 単位 column was added the
+    // centre of a row is its 状態 switch, and a click there toggles the asset.
+    await page.locator('table[aria-label="資産一覧"] tbody tr', { hasText: "demo-skill" }).locator("th").click();
     const detail = page.getByRole("complementary", { name: "資産の詳細" });
     await detail.getByText("A demo skill for the e2e run").waitFor();
     await page.keyboard.press("Escape");

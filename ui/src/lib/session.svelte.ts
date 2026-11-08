@@ -24,6 +24,7 @@ import {
   type Inventory,
   type Plan,
   type PlanAction,
+  type Scopes,
 } from "./contract.js";
 import {
   apply as runApply,
@@ -35,6 +36,7 @@ import {
   STALE_PLAN_MARK,
   plan as runPlan,
   removeAsset,
+  scopes as runScopes,
   setAssetEnabled,
   type EngineMode,
 } from "./engine.js";
@@ -43,10 +45,12 @@ import {
   actionsOutsideTarget,
   describeNarrowings,
   filterRows,
+  filterScope,
   rowsFor,
   type AssetRow,
   type ReadState,
   type RowFilter,
+  type ScopeFilter,
   type TargetFilter,
 } from "./assets.js";
 import { buildSchematic, type Schematic } from "./schematic.js";
@@ -74,6 +78,14 @@ export class Session {
   findings = $state<Doctor | null>(null);
   plan = $state<Plan | null>(null);
   applied = $state<Apply | null>(null);
+  /**
+   * The project and local scopes (`ac scopes`). Read beside inventory and
+   * doctor, and kept apart from them: a scope layer that cannot be read leaves
+   * the 個人 rows — the whole of the console before P2 — exactly as they are.
+   */
+  scopes = $state<Scopes | null>(null);
+  scopesStatus = $state<Status>("idle");
+  scopesError = $state<EngineError | null>(null);
 
   surveyStatus = $state<Status>("idle");
   diffStatus = $state<Status>("idle");
@@ -106,7 +118,17 @@ export class Session {
    * query is about one list and this is about one agent.
    */
   targetFilter = $state<TargetFilter>("all");
-  /** The selected row's name, per tab, so switching tabs keeps each selection. */
+  /**
+   * 個人 / プロジェクト / ローカル (ARCHITECTURE「単位とプロジェクト」).
+   *
+   * 個人 by default, which is the console as it was: nothing a person already
+   * relies on moves until they ask for another scope. Display only, like the
+   * target narrowing, and kept across tabs for the same reason.
+   */
+  scopeFilter = $state<ScopeFilter>("user");
+  /** One project, or `null` for all of them. Ignored under 個人. */
+  projectFilter = $state<string | null>(null);
+  /** The selected row's key, per tab, so switching tabs keeps each selection. */
   selection = $state<Record<AssetType, string | null>>({
     skill: null,
     mcp: null,
@@ -211,12 +233,21 @@ export class Session {
 
   /** Every row of the current tab, before search and filter. */
   allRows = $derived<AssetRow[]>(
-    this.inventory === null ? [] : rowsFor(this.tab, this.inventory, this.findings, this.plan),
+    this.inventory === null
+      ? []
+      : rowsFor(this.tab, this.inventory, this.findings, this.plan, this.scopes),
   );
+
+  /**
+   * The rows of the chosen scope (and project), before search and filter. This
+   * is the table's 「全体」: the count reads 「3 / 12 件」 against it, because a
+   * scope is which list is being looked at rather than a filter on one list.
+   */
+  scopeRows = $derived<AssetRow[]>(filterScope(this.allRows, this.scopeFilter, this.projectFilter));
 
   /** The rows the table actually draws. */
   rows = $derived<AssetRow[]>(
-    filterRows(this.allRows, this.query, this.filter, this.targetFilter),
+    filterRows(this.scopeRows, this.query, this.filter, this.targetFilter),
   );
 
   /**
@@ -224,7 +255,7 @@ export class Session {
    * order to name the narrowing as the reason the list is empty, and to say how
    * many rows dropping it brings back.
    */
-  rowsIgnoringTarget = $derived<AssetRow[]>(filterRows(this.allRows, this.query, this.filter));
+  rowsIgnoringTarget = $derived<AssetRow[]>(filterRows(this.scopeRows, this.query, this.filter));
 
   /**
    * Executable actions aimed at a target the list is currently hiding.
@@ -251,16 +282,24 @@ export class Session {
    * narrowing was 「すべて」.
    */
   listNarrowings = $derived<string[]>(
-    describeNarrowings(this.tab, this.targetFilter, this.filter, this.query),
+    describeNarrowings(
+      this.tab,
+      this.targetFilter,
+      this.filter,
+      this.query,
+      this.scopeFilter,
+      this.projectFilter,
+    ),
   );
 
   /** The selected row of the current tab, if it still exists after a re-survey. */
   selected = $derived<AssetRow | null>(
-    this.allRows.find((row) => row.name === this.selection[this.tab]) ?? null,
+    this.allRows.find((row) => row.key === this.selection[this.tab]) ?? null,
   );
 
-  select(name: string | null): void {
-    this.selection = { ...this.selection, [this.tab]: name };
+  /** Select by row key (a 個人 row's key is its name). */
+  select(key: string | null): void {
+    this.selection = { ...this.selection, [this.tab]: key };
   }
 
   /**
@@ -348,9 +387,36 @@ export class Session {
     this.surveyStatus = "running";
     this.surveyError = null;
     try {
-      const [inventory, findings] = await Promise.all([runInventory(), runDoctor()]);
+      this.scopesStatus = "running";
+      this.scopesError = null;
+      // The scope layer's failure is caught here and kept to itself (see
+      // `scopes`); only the user level's reading decides the survey.
+      const scopesRead = runScopes().then(
+        (value) => ({ ok: true as const, value }),
+        (err: unknown) => ({ ok: false as const, err: toEngineError(err) }),
+      );
+      const [inventory, findings, scopes] = await Promise.all([
+        runInventory(),
+        runDoctor(),
+        scopesRead,
+      ]);
       this.inventory = inventory;
       this.findings = findings;
+      if (scopes.ok) {
+        this.scopes = scopes.value;
+        this.scopesStatus = "ready";
+      } else {
+        this.scopes = null;
+        this.scopesError = scopes.err;
+        this.scopesStatus = "failed";
+      }
+      // A project that is no longer discovered is not a narrowing to keep.
+      if (
+        this.projectFilter !== null &&
+        !(this.scopes?.projects.some((p) => p.root === this.projectFilter) ?? false)
+      ) {
+        this.projectFilter = null;
+      }
       this.surveyedAt = new Date();
       this.surveyStatus = "ready";
     } catch (err) {
@@ -359,6 +425,8 @@ export class Session {
       this.inventory = null;
       this.findings = null;
       this.plan = null;
+      this.scopes = null;
+      this.scopesStatus = "idle";
       // The plan is gone, so an error *about producing that plan* has to go with
       // it. `fault` is `writeError ?? diffError ?? surveyError`, so a standing
       // `diffError` outranked the failure that just happened: the table said

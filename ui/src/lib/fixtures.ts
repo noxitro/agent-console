@@ -43,6 +43,7 @@ import type {
   InventoryTarget,
   Plan,
   PlanAction,
+  Scopes,
   SkillLinkKind,
   SourceAgent,
   SourceCommand,
@@ -972,6 +973,133 @@ function runImportOn(machine: Machine): Import {
 /* Transport                                                           */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* Scopes (ARCHITECTURE「単位とプロジェクト」)                           */
+/* ------------------------------------------------------------------ */
+
+const REPO_WEB = "C:\\work\\web-app";
+const REPO_API = "C:\\work\\api-server";
+
+/**
+ * Two projects, chosen so every state the scope column draws is on screen:
+ * a project skill the user's own skill outranks (Claude: 個人 > プロジェクト),
+ * a project agent that outranks the user's (Claude: プロジェクト > 個人), a local
+ * MCP server that outranks the project's, an agent file whose reading by one
+ * target is only reported (未確認), and an unreadable `.mcp.json`.
+ */
+function buildScopes(machine: Machine): Scopes {
+  const empty = machine.scenario === "empty";
+  return {
+    userSources: {
+      skill: SKILLS_ROOT,
+      mcp: `${SOURCE_ROOT}\\mcp\\servers.json`,
+      agent: `${SOURCE_ROOT}\\agents`,
+      command: `${SOURCE_ROOT}\\commands`,
+    },
+    projects: empty
+      ? []
+      : [
+          { root: REPO_API, sources: ["claude", "copilot-cli"] },
+          { root: REPO_WEB, sources: ["claude", "vscode"] },
+        ],
+    discovery: { cached: true, missing: 2, outsideGit: 1, faults: [] },
+    assets: empty
+      ? []
+      : [
+          {
+            assetType: "skill",
+            name: "commit-message",
+            scope: "project",
+            project: REPO_WEB,
+            path: `${REPO_WEB}\\.claude\\skills\\commit-message`,
+            readers: [
+              {
+                target: "claude",
+                shadowedBy: { scope: "user", path: PATHS.claudeSkills },
+              },
+              { target: "copilot-cli" },
+              { target: "vscode" },
+            ],
+            description: "このリポジトリ流のコミットメッセージ",
+          },
+          {
+            assetType: "skill",
+            name: "deploy-check",
+            scope: "project",
+            project: REPO_WEB,
+            path: `${REPO_WEB}\\.github\\skills\\deploy-check`,
+            readers: [{ target: "copilot-cli" }, { target: "vscode" }],
+            description: "デプロイ前の確認手順",
+          },
+          {
+            assetType: "agent",
+            name: "code-reviewer",
+            scope: "project",
+            project: REPO_API,
+            path: `${REPO_API}\\.claude\\agents\\code-reviewer.md`,
+            readers: [{ target: "claude" }, { target: "copilot-cli", unverified: true }, { target: "vscode" }],
+            description: "API の変更だけを見るレビュアー",
+            kindNote: "opus",
+          },
+          {
+            assetType: "mcp",
+            name: "postgres",
+            scope: "project",
+            project: REPO_API,
+            path: `${REPO_API}\\.mcp.json`,
+            readers: [
+              {
+                target: "claude",
+                shadowedBy: {
+                  scope: "local",
+                  path: PATHS.claudeMcp,
+                  entry: 'projects["C:/work/api-server"].mcpServers',
+                },
+              },
+              { target: "copilot-cli" },
+              { target: "vscode" },
+            ],
+            kindNote: "stdio",
+          },
+          {
+            assetType: "mcp",
+            name: "postgres",
+            scope: "local",
+            project: REPO_API,
+            path: PATHS.claudeMcp,
+            entry: 'projects["C:/work/api-server"].mcpServers',
+            readers: [{ target: "claude" }],
+            kindNote: "stdio",
+          },
+        ],
+    shadows: empty
+      ? []
+      : [
+          {
+            target: "claude",
+            assetType: "agent",
+            name: "code-reviewer",
+            project: REPO_API,
+            by: { scope: "project", path: `${REPO_API}\\.claude\\agents\\code-reviewer.md` },
+          },
+        ],
+    faults: empty
+      ? []
+      : [
+          {
+            target: "vscode",
+            assetType: "mcp",
+            scope: "project",
+            project: REPO_WEB,
+            path: `${REPO_WEB}\\.vscode\\mcp.json`,
+            message: "JSONC として読めません",
+          },
+        ],
+    locations: [],
+    precedence: [],
+  };
+}
+
 function ok(payload: unknown, code: 0 | 1 = 0): AmOutput {
   return { stdout: JSON.stringify(payload), stderr: "", code };
 }
@@ -1015,6 +1143,9 @@ export function fixtureTransport(
         switch (command) {
           case "inventory":
             return ok(buildInventory(machine));
+
+          case "scopes":
+            return ok(buildScopes(machine));
 
           case "doctor": {
             const payload = buildDoctor(machine);

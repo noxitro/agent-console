@@ -232,11 +232,15 @@
     document.getElementById(`statusbar-${which}`)?.focus();
   }
 
+  // A read-only row (project / local scope) draws neither control; the guard
+  // is here too so no path can turn one into a write against the source.
   function onToggle(row: AssetRow): void {
+    if (row.readOnly) return;
     void session.setEnabled(row.type, row.name, !row.enabled);
   }
 
   function onRemove(row: AssetRow): void {
+    if (row.readOnly) return;
     session.requestRemove(row.type, row.name);
   }
 
@@ -402,6 +406,25 @@
     failed. `survey()` can drop a `diffError` (it has just discarded the plan
     that error was about); it cannot drop this one. So both are drawn.
   -->
+  {#if !keyless && session.scopeFilter !== "user" && session.scopesStatus === "failed" && session.scopesError !== null}
+    <!--
+      The scope layer failed on its own. The 個人 rows are unaffected, so this
+      is a strip about the project and local scopes rather than a fault plate
+      over the whole window; it is shown only while one of them is asked for.
+    -->
+    <p class="strip strip--fault">
+      <Icon name="fault" size={13} />プロジェクトとローカルの単位を読み取れませんでした: {session.scopesError.message}
+    </p>
+  {/if}
+  {#if !keyless && session.scopeFilter !== "user" && (session.scopes?.faults.length ?? 0) + (session.scopes?.discovery.faults.length ?? 0) > 0}
+    <p class="strip strip--fault">
+      <Icon name="fault" size={13} />読み取れなかった置き場所:
+      {[...(session.scopes?.discovery.faults ?? []), ...(session.scopes?.faults ?? [])]
+        .map((f) => `${f.path}(${f.message})`)
+        .join("、")}
+    </p>
+  {/if}
+
   {#if !keyless && session.surveyStatus === "failed" && session.surveyError !== null && session.surveyError !== session.fault}
     <FaultPlate
       error={session.surveyError}
@@ -442,12 +465,16 @@
     {:else}
       <AssetTable
         rows={session.rows}
-        total={session.allRows.length}
+        total={session.scopeRows.length}
         totalIgnoringTarget={session.rowsIgnoringTarget.length}
         type={session.tab}
         query={session.query}
         filter={session.filter}
         targetFilter={session.targetFilter}
+        scopeFilter={session.scopeFilter}
+        projectFilter={session.projectFilter}
+        projects={session.scopes?.projects ?? []}
+        scopesStatus={session.scopesStatus}
         selected={session.selection[session.tab]}
         {busy}
         surveyStatus={session.surveyStatus}
@@ -463,7 +490,13 @@
         onTargetFilter={(value) => {
           session.targetFilter = value;
         }}
-        onSelect={(name) => session.select(name)}
+        onScopeFilter={(value) => {
+          session.scopeFilter = value;
+        }}
+        onProjectFilter={(value) => {
+          session.projectFilter = value;
+        }}
+        onSelect={(key) => session.select(key)}
         {onToggle}
         {onRemove}
       />

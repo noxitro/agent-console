@@ -351,6 +351,82 @@ export function opencodeAgentsDir(): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Scopes: projects and their own locations (ARCHITECTURE「単位」)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * `~/.agent-console/projects-cache.json` — the project discovery cache (S16).
+ *
+ * The only file the scope layer writes. It holds project roots and the stamps
+ * of the record files they came from, nothing read out of those files besides.
+ */
+export function projectsCachePath(): string {
+  return path.join(consoleRoot(), "projects-cache.json");
+}
+
+/**
+ * `~/.copilot/session-state/` — Copilot CLI's per-session directories, each with
+ * a `workspace.yaml` whose `cwd:` line names the folder it ran in. Only that
+ * line is read (the rest holds prompts and summaries).
+ */
+export function copilotSessionStateDir(): string {
+  return path.join(copilotHome(), "session-state");
+}
+
+/**
+ * `%APPDATA%/Code/User/workspaceStorage/` — one directory per folder VS Code has
+ * opened, each with a `workspace.json` whose `folder` is a `file://` URI.
+ */
+export function vscodeWorkspaceStorageDir(): string {
+  return path.join(vscodeUserDir(), "workspaceStorage");
+}
+
+/** `<root>/.git` — a directory in a clone, a file in a worktree or submodule. */
+export function gitMarkerPath(root: string): string {
+  return path.join(root, ".git");
+}
+
+/** `<root>/.claude/skills/` — Claude Code's project skills. */
+export function projectClaudeSkillsDir(root: string): string {
+  return path.join(root, ".claude", "skills");
+}
+
+/** `<root>/.claude/agents/` — Claude Code's project subagents. */
+export function projectClaudeAgentsDir(root: string): string {
+  return path.join(root, ".claude", "agents");
+}
+
+/** `<root>/.mcp.json` — project MCP servers (`mcpServers`), read by Claude Code, Copilot CLI and VS Code. */
+export function projectRootMcpPath(root: string): string {
+  return path.join(root, ".mcp.json");
+}
+
+/** `<root>/.agents/skills/` — the cross-tool project skills directory (Copilot CLI, VS Code). */
+export function projectAgentsSkillsDir(root: string): string {
+  return path.join(root, ".agents", "skills");
+}
+
+/** `<root>/.github/skills/` — Copilot's project skills. */
+export function projectGithubSkillsDir(root: string): string {
+  return path.join(root, ".github", "skills");
+}
+
+/** `<root>/.github/agents/` — Copilot's project custom agents (`*.agent.md`). */
+export function projectGithubAgentsDir(root: string): string {
+  return path.join(root, ".github", "agents");
+}
+
+/** `<root>/.vscode/mcp.json` — VS Code's workspace MCP servers (`servers`, JSONC). */
+export function projectVscodeMcpPath(root: string): string {
+  return path.join(root, ".vscode", "mcp.json");
+}
+
+/** `<root>/.github/mcp.json` — Copilot CLI's second project MCP file (`mcpServers`). */
+export function projectGithubMcpPath(root: string): string {
+  return path.join(root, ".github", "mcp.json");
+}
+
+/* ------------------------------------------------------------------ */
 /* Misc                                                                */
 /* ------------------------------------------------------------------ */
 

@@ -17,6 +17,7 @@
 /** Subcommands the GUI is allowed to run (SPEC §5, §9.2). */
 export const COMMANDS = [
   "inventory",
+  "scopes",
   "doctor",
   "plan",
   "apply",

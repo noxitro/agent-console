@@ -37,6 +37,7 @@ import type {
   Inventory,
   Plan,
   RemoveResult,
+  Scopes,
   TargetId,
   WireError,
 } from "./contract.js";
@@ -430,6 +431,14 @@ export async function inventory(): Promise<Inventory> {
   return (await run<Inventory>(["inventory"])).payload;
 }
 
+/**
+ * `ac scopes` — the project and local scopes. Read-only (it keeps the discovery
+ * cache in `~/.agent-console/`, nothing else).
+ */
+export async function scopes(): Promise<Scopes> {
+  return (await run<Scopes>(["scopes"])).payload;
+}
+
 /** `am doctor` — diagnostics. Read-only; exit 1 simply means "findings exist". */
 export async function doctor(): Promise<Doctor> {
   return (await run<Doctor>(["doctor"])).payload;
@@ -539,4 +548,4 @@ export async function shutdownServer(): Promise<void> {
   if (!response.ok) throw refusal(response.status, await response.json().catch(() => null));
 }
 
-export type { Apply, Doctor, Import, Inventory, Plan } from "./contract.js";
+export type { Apply, Doctor, Import, Inventory, Plan, Scopes } from "./contract.js";

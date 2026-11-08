@@ -201,6 +201,102 @@ export interface Inventory {
   targets: InventoryTarget[];
 }
 
+/* -------------------------------- scopes --------------------------------- */
+
+/**
+ * `ac scopes --json` — the project and local scopes (`src/commands/scopes.ts`,
+ * `src/core/scopes.ts`). The user level stays `inventory`'s; this payload never
+ * repeats it, it only says where a project or a local entry overrides it.
+ */
+export type Scope = "user" | "project" | "local";
+
+/** How a location or precedence rule is known (spikes S11 / S12). Only 公式 is verified. */
+export type Confidence = "公式" | "実測" | "既報" | "推測";
+
+export type ProjectSource = "claude" | "copilot-cli" | "vscode";
+
+export interface ScopeProject {
+  root: string;
+  sources: ProjectSource[];
+}
+
+export interface ScopePlace {
+  scope: Scope;
+  path: string;
+  entry?: string;
+}
+
+export interface ScopedReader {
+  target: TargetId;
+  /** Not officially documented for this target — drawn 未確認. */
+  unverified?: true;
+  /** A higher-precedence place holds the same name: this one does not apply. */
+  shadowedBy?: ScopePlace;
+}
+
+export interface ScopedAsset {
+  assetType: AssetType;
+  name: string;
+  scope: Exclude<Scope, "user">;
+  project: string;
+  path: string;
+  entry?: string;
+  readers: ScopedReader[];
+  description?: string;
+  kindNote?: string;
+  unreadable?: string;
+}
+
+export interface UserShadow {
+  target: TargetId;
+  assetType: AssetType;
+  name: string;
+  project: string;
+  by: ScopePlace;
+}
+
+export interface ScopeFault {
+  target: TargetId;
+  assetType: AssetType;
+  scope: Exclude<Scope, "user">;
+  project: string;
+  path: string;
+  message: string;
+}
+
+export interface ScopeLocation {
+  target: TargetId;
+  assetType: AssetType;
+  scope: Exclude<Scope, "user">;
+  label: string;
+  confidence: Confidence;
+  basis: string;
+}
+
+export interface Scopes {
+  /** Where each kind's user level (個人) comes from: the source of truth. */
+  userSources: Record<AssetType, string>;
+  projects: ScopeProject[];
+  discovery: {
+    cached: boolean;
+    missing: number;
+    outsideGit: number;
+    faults: { source: ProjectSource; path: string; message: string }[];
+  };
+  assets: ScopedAsset[];
+  shadows: UserShadow[];
+  faults: ScopeFault[];
+  locations: ScopeLocation[];
+  precedence: {
+    target: TargetId;
+    assetType: AssetType;
+    order: Scope[];
+    confidence: Confidence;
+    applied: boolean;
+    basis: string;
+  }[];
+}
+
 /* -------------------------------- doctor --------------------------------- */
 
 export type FindingLevel = "error" | "warn";

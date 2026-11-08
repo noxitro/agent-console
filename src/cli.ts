@@ -24,6 +24,7 @@ import { runDoctor } from "./commands/doctor.js";
 import { runImport } from "./commands/import.js";
 import { runInventory } from "./commands/inventory.js";
 import { runPlan } from "./commands/plan.js";
+import { runScopes, scopesJson } from "./commands/scopes.js";
 import {
   applyJson,
   doctorJson,
@@ -122,6 +123,20 @@ export function buildProgram(io: CommandIo, setExit: (code: number) => void): Co
         return;
       }
       setExit(runInventory({ io }));
+    });
+
+  program
+    .command("scopes")
+    .description(
+      "List the project and local scopes of Claude Code, Copilot CLI and VS Code: discovered projects, their assets, and which scope wins (read-only; keeps a discovery cache in ~/.agent-console).",
+    )
+    .option("--json", JSON_HELP, false)
+    .action((options: { json?: boolean }) => {
+      if (options.json === true) {
+        setExit(emit(scopesJson(), io));
+        return;
+      }
+      setExit(runScopes({ io }));
     });
 
   program

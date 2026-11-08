@@ -20,6 +20,9 @@
     DELIVERY_LABEL,
     DELIVERY_MARK,
     FILTER_LABEL,
+    SCOPE_FILTERS,
+    SCOPE_FILTER_LABEL,
+    SCOPE_LABEL,
     SECOND_COLUMN_LABEL,
     TARGET_FILTERS,
     TARGET_FILTER_LABEL,
@@ -27,12 +30,14 @@
     emptyReason,
     formatDate,
     isUnmeasured,
+    projectLabel,
     secondColumnValue,
     type AssetRow,
     type RowFilter,
+    type ScopeFilter,
     type TargetFilter,
   } from "./assets.js";
-  import type { AssetType } from "./contract.js";
+  import type { AssetType, ScopeProject } from "./contract.js";
   import {
     ROW_ITSELF,
     activeRowIndex,
@@ -52,6 +57,10 @@
     query,
     filter,
     targetFilter,
+    scopeFilter,
+    projectFilter,
+    projects,
+    scopesStatus,
     selected,
     busy,
     surveyStatus,
@@ -60,6 +69,8 @@
     onQuery,
     onFilter,
     onTargetFilter,
+    onScopeFilter,
+    onProjectFilter,
     onSelect,
     onToggle,
     onRemove,
@@ -79,6 +90,15 @@
     query: string;
     filter: RowFilter;
     targetFilter: TargetFilter;
+    /** 個人 / プロジェクト / ローカル / すべて — the scope segment. */
+    scopeFilter: ScopeFilter;
+    /** The project chosen in the picker beside it, or null for every project. */
+    projectFilter: string | null;
+    /** Discovered projects; empty until `ac scopes` has answered. */
+    projects: ScopeProject[];
+    /** How the scope layer's own reading stands. */
+    scopesStatus: Status;
+    /** The selected row's key (a 個人 row's key is its name). */
     selected: string | null;
     busy: boolean;
     /**
@@ -105,7 +125,9 @@
     onQuery: (value: string) => void;
     onFilter: (value: RowFilter) => void;
     onTargetFilter: (value: TargetFilter) => void;
-    onSelect: (name: string) => void;
+    onScopeFilter: (value: ScopeFilter) => void;
+    onProjectFilter: (value: string | null) => void;
+    onSelect: (key: string) => void;
     onToggle: (row: AssetRow) => void;
     onRemove: (row: AssetRow) => void;
     onDiff: () => void;
@@ -126,6 +148,7 @@
 
   const filterEls: (HTMLButtonElement | undefined)[] = [];
   const targetEls: (HTMLButtonElement | undefined)[] = [];
+  const scopeEls: (HTMLButtonElement | undefined)[] = [];
 
   /** Arrow keys move focus and the selection together, as a radio group does. */
   function moveSegment<T>(
@@ -162,6 +185,9 @@
       filter,
       targetFilter,
       hasPlan,
+      scope: scopeFilter,
+      scopesStatus,
+      projectCount: projects.length,
     }),
   );
 
@@ -198,12 +224,12 @@
    * one, whatever the asset count. The arithmetic is in `rownav.ts`.
    */
 
-  const names = $derived(rows.map((row) => row.name));
+  const keys = $derived(rows.map((row) => row.key));
 
-  /** The row the keyboard last touched — by name, so filtering cannot move it. */
-  let focusedName = $state<string | null>(null);
+  /** The row the keyboard last touched — by key, so filtering cannot move it. */
+  let focusedKey = $state<string | null>(null);
 
-  const activeIndex = $derived(activeRowIndex(names, focusedName, selected));
+  const activeIndex = $derived(activeRowIndex(keys, focusedKey, selected));
 
   const rowEls: (HTMLTableRowElement | undefined)[] = [];
 
@@ -223,7 +249,7 @@
   function focusRow(index: number): void {
     const row = rows[index];
     if (row === undefined) return;
-    focusedName = row.name;
+    focusedKey = row.key;
     rowEls[index]?.focus();
   }
 
@@ -232,15 +258,15 @@
     const row = rows[index];
     if (row === undefined) return;
     focusRow(index);
-    if (row.name !== selected) onSelect(row.name);
+    if (row.key !== selected) onSelect(row.key);
   }
 
   function handleRowClick(index: number, row: AssetRow): void {
     // A click that only finished a drag was a text selection, not a choice.
     if (isTextSelectionClick(window.getSelection()?.toString())) return;
-    focusedName = row.name;
+    focusedKey = row.key;
     rowEls[index]?.focus();
-    if (row.name !== selected) onSelect(row.name);
+    if (row.key !== selected) onSelect(row.key);
   }
 
   function handleRowKeydown(event: KeyboardEvent, index: number, row: AssetRow): void {
@@ -269,8 +295,8 @@
     // mean "choose this asset".
     if (focusedControl === null && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();
-      focusedName = row.name;
-      onSelect(row.name);
+      focusedKey = row.key;
+      onSelect(row.key);
     }
   }
 </script>
@@ -305,6 +331,49 @@
           onQuery("");
         }}
       />
+    </div>
+
+    <!--
+      ARCHITECTURE「単位とプロジェクト」— the scope axis, orthogonal to the
+      target narrowing and drawn in the same segmented vocabulary. 個人 is the
+      default and is the console as it was. The picker beside it narrows the
+      project and local scopes to one project; a native select, because the
+      project list is long and open-ended where these four are fixed.
+    -->
+    <div class="target-filter">
+      <span class="annotation" aria-hidden="true">単位</span>
+      <div class="filters" role="radiogroup" aria-label="単位で絞り込む">
+        {#each SCOPE_FILTERS as value, index (value)}
+          <button
+            bind:this={scopeEls[index]}
+            type="button"
+            class="chip"
+            role="radio"
+            aria-checked={scopeFilter === value}
+            tabindex={segmentTabIndex(index, SCOPE_FILTERS.indexOf(scopeFilter), SCOPE_FILTERS.length)}
+            onclick={() => onScopeFilter(value)}
+            onkeydown={(event) => moveSegment(event, index, scopeEls, SCOPE_FILTERS, onScopeFilter)}
+          >
+            {SCOPE_FILTER_LABEL[value]}
+          </button>
+        {/each}
+      </div>
+      {#if scopeFilter !== "user"}
+        <select
+          class="project-picker"
+          aria-label="プロジェクト"
+          value={projectFilter ?? ""}
+          onchange={(event) => {
+            const value = event.currentTarget.value;
+            onProjectFilter(value === "" ? null : value);
+          }}
+        >
+          <option value="">すべてのプロジェクト({projects.length})</option>
+          {#each projects as project (project.root)}
+            <option value={project.root} title={project.root}>{projectLabel(project.root)} — {project.root}</option>
+          {/each}
+        </select>
+      {/if}
     </div>
 
     <!--
@@ -403,6 +472,7 @@
           <tr>
             <th scope="col" class="col-name">名前</th>
             <th scope="col" class="col-meta">{secondColumn}</th>
+            <th scope="col" class="col-scope">単位</th>
             <th scope="col" class="col-state">状態</th>
             <!--
               The badge strip is five marks in a fixed order, and until this
@@ -428,7 +498,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each rows as row, index (row.name)}
+          {#each rows as row, index (row.key)}
             <!--
               The row *is* the control. It was a 64px button in a 832px row
               before, which asked for pointer precision the job never needed;
@@ -437,9 +507,9 @@
             -->
             <tr
               bind:this={rowEls[index]}
-              class:is-selected={row.name === selected}
+              class:is-selected={row.key === selected}
               class:is-disabled={!row.enabled}
-              aria-selected={row.name === selected}
+              aria-selected={row.key === selected}
               tabindex={rowTabIndex(index, activeIndex, rows.length)}
               onclick={() => handleRowClick(index, row)}
               onkeydown={(event) => handleRowKeydown(event, index, row)}
@@ -456,8 +526,34 @@
                 {:else if row.hasFault}
                   <span class="flag flag--fault">不良</span>
                 {/if}
+                {#if row.shadowedEverywhere === true}
+                  <span class="flag flag--shadow">上書きされて効いていない</span>
+                {:else if row.shadowedSomewhere === true}
+                  <span class="flag flag--shadow">一部で上書き</span>
+                {/if}
+                {#if row.overriddenIn !== undefined}
+                  <span class="flag flag--shadow"
+                    >{new Set(row.overriddenIn.map((o) => o.project)).size} プロジェクトで上書きあり</span
+                  >
+                {/if}
               </th>
               <td class="col-meta num">{secondColumnValue(row)}</td>
+              <td class="col-scope">
+                <!-- The scope as a badge, and where the thing is. The path is
+                     the place a person would open; for a 個人 row it is the
+                     source this tool distributes from. -->
+                <span class="scope-badge scope-badge--{row.scope}">{SCOPE_LABEL[row.scope]}</span>
+                {#if row.unverified === true}
+                  <!-- 破線 = 未確定 (DESIGN: Shapes): a place no official document
+                       confirms some reader of it reads. -->
+                  <span class="scope-badge scope-badge--unverified">未確認</span>
+                {/if}
+                {#if row.scopePath !== undefined}
+                  <span class="scope-path" title={row.scopePath}
+                    >{row.scopePath}{row.scopeEntry !== undefined ? ` › ${row.scopeEntry}` : ""}</span
+                  >
+                {/if}
+              </td>
               <td class="col-state">
                 <!--
                   SPEC §9.1: enabled/disabled is exclusion in the manifest, so
@@ -480,6 +576,11 @@
                   the accepted cost, and is how the same control reads in the
                   view this console takes as its standard.
                 -->
+                {#if row.readOnly}
+                  <!-- No switch: on/off here is this tool's manifest, and a
+                       project or local asset is not in it (P2 writes nothing). -->
+                  <span class="readonly">読み取りのみ</span>
+                {:else}
                 <button
                   type="button"
                   class="toggle"
@@ -497,6 +598,7 @@
                   <span class="toggle__dot" aria-hidden="true"></span>
                   <span id="asset-{index}-state">{row.enabled ? "有効" : "無効"}</span>
                 </button>
+                {/if}
               </td>
               <td class="col-targets">
                 <!--
@@ -526,6 +628,7 @@
               </td>
               <td class="col-date num">{formatDate(row.modified)}</td>
               <td class="col-actions">
+                {#if !row.readOnly}
                 <button
                   type="button"
                   class="icon-btn"
@@ -540,6 +643,7 @@
                 >
                   <Icon name="trash" size={14} />
                 </button>
+                {/if}
               </td>
             </tr>
           {/each}
@@ -780,15 +884,79 @@
     white-space: nowrap;
   }
 
+  /* A flag wraps as a whole, never between its characters. */
   .flag {
+    display: inline-block;
     margin-left: var(--gap-2);
     padding: 0 var(--gap-1);
     border: 1px solid currentColor;
     font-size: var(--t-micro);
+    white-space: nowrap;
   }
 
   .flag--fault {
     color: var(--fault-text);
+  }
+
+  /* Overridden: a quiet fact, not a fault — no signal colour (DESIGN: 信号色の独占). */
+  .flag--shadow {
+    color: var(--ink-2);
+    background: var(--paper-inset);
+  }
+
+  .col-scope {
+    max-width: 13rem;
+    font-size: var(--t-small);
+  }
+
+  .scope-badge {
+    display: inline-block;
+    margin-right: var(--gap-1);
+    padding: 0 var(--gap-1);
+    border: 1px solid var(--rule-strong);
+    font-size: var(--t-micro);
+    white-space: nowrap;
+  }
+
+  .scope-badge--project,
+  .scope-badge--local {
+    border-color: var(--ink-2);
+  }
+
+  .scope-badge--unverified {
+    color: var(--ink-2);
+    border-style: dashed;
+  }
+
+  .scope-path {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: var(--t-micro);
+    color: var(--ink-2);
+  }
+
+  .readonly {
+    font-size: var(--t-small);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .project-picker {
+    min-height: 2rem;
+    max-width: 16rem;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--t-small);
+  }
+
+  .project-picker:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
   }
 
   /* Switch ------------------------------------------------------------ */
@@ -923,6 +1091,26 @@
      measurement nobody took; both are "no state here", so both are dashed. */
   .badge--unsupported,
   .badge--unknown {
+    color: var(--ink-2);
+    border-style: dashed;
+  }
+
+  /* The scope layer's four. Read from here: solid ink, quiet — this is a fact
+     about where a harness looks, not a delivery, so no pass green. Overridden:
+     the off look. Unverified and not-read: dashed, the mark for 未確定 and for
+     実在しない (DESIGN: Shapes). */
+  .badge--present {
+    color: var(--ink);
+    border-color: var(--ink-2);
+  }
+
+  .badge--shadowed {
+    color: var(--ink-2);
+    background: var(--paper-inset);
+  }
+
+  .badge--unverified,
+  .badge--outside {
     color: var(--ink-2);
     border-style: dashed;
   }

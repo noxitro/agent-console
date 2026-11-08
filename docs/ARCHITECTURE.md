@@ -102,7 +102,7 @@ agent-console は、Claude Code や GitHub Copilot などのコーディング�
 
 `/api/run` の `args` は、`src/server/vocabulary.ts` の固定表に照らしてから実行する。任意の argv は受け付けない。
 
-- コマンド: `inventory` / `doctor` / `plan` / `apply` / `import` / `enable` / `disable` / `remove`
+- コマンド: `inventory` / `scopes` / `doctor` / `plan` / `apply` / `import` / `enable` / `disable` / `remove`(`scopes` は読み取り。書くのは `~/.agent-console/projects-cache.json` だけ)
 - `enable` / `disable` / `remove` は、資産の種別(`skill` / `mcp` / `agent` / `command`)と名前を取る。名前は英数字と `-` `_` `.`、64 字まで、`-` で始まらないもの
 - フラグ: `--prune` / `--yes` / `--dry-run` / `--move` / `--prefer <target>`
 - argv は 8 個まで。本文は 64 KiB まで
@@ -188,7 +188,7 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 |---|---|---|---|
 | **P0 準備**(済) | am を元にリポジトリを作り、名前を変える(パッケージ・CLI・README)。基準値(テスト・CLI の実測ゲート・svelte-check)を測り直す | リポジトリの中だけ | 基準値が am と一致する |
 | **P1 ブラウザ化**(済) | サーバー、トークン、Host / Origin の検査、API の語彙、画面の送り口の差し替え、Tauri の削除、`agent-console.bat`。機能は am と同じ | am と同じ | S15 が緑。am の GUI で出来たことがブラウザで全部できる(Playwright の e2e)。既存の JSON スナップショットの差分が 0 |
-| **P2 単位とプロジェクト** | 単位の層、プロジェクトの発見(Claude と Copilot が記録しているフォルダを集め、実在しないもの・git 外のものを絞る)、Claude と Copilot の資産を個人 / プロジェクト / ローカルの単位で表示、プラグインの読み取り、常時コスト(毎セッションのコンテキストに載る量)の見積もり | なし(`~/.agent-console/` の設定とキャッシュだけ) | S11・S12・S16 の判定済み。実 HOME の読み取りで前後のカナリアが変わらない。件数を手で数えた値と照合する |
+| **P2 単位とプロジェクト**(前半済) | 単位の層、プロジェクトの発見(Claude と Copilot が記録しているフォルダを集め、実在しないもの・git 外のものを絞る)、Claude と Copilot の資産を個人 / プロジェクト / ローカルの単位で表示、プラグインの読み取り、常時コスト(毎セッションのコンテキストに載る量)の見積もり | なし(`~/.agent-console/` の設定とキャッシュだけ) | S11・S12・S16 の判定済み。実 HOME の読み取りで前後のカナリアが変わらない。件数を手で数えた値と照合する。**前半(済)**: 単位の層(`ac scopes`)、プロジェクトの発見とキャッシュ、Claude Code・Copilot CLI・VS Code の skill / agent / MCP をプロジェクト・ローカルの単位で表示、上書きの判定、画面の単位セグメントと単位列(「単位の置き場所」)。**後半(未)**: プラグインの読み取り、常時コストの見積もり、指示ファイルの置き場所の表示(P3 と合わせる) |
 | **P3 指示ファイル** | 表示(リンクと import をたどった届き先の木、字数)と編集(差分 → 確認 → 退避 → 原子的な置き換え) | 指示ファイル | 改行と BOM が元のまま残る(陽性コントロール付き)。開いた後にファイルが変わっていたら保存を断る |
 | **P4 操作** | プラグインとマーケットプレイスの操作(公式 CLI 経由)、単位を指定した導入・削除、skill の表示の切り替え | 公式 CLI 経由 | 実データでのアンインストールを試し、事後の読み直しで確かめる |
 | **P5 Browse** | カタログの取得とキャッシュ、検索、カテゴリ、カードからの導入 | キャッシュと、公式 CLI 経由の導入 | S13・S14 の判定済み。オフラインでもキャッシュから描ける。許可リストの外のホストへ出ないことをテストで固定する |
@@ -199,14 +199,66 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 
 | ID | 問い | 時点 |
 |---|---|---|
-| S11 | Copilot CLI と Copilot アプリが読む指示ファイルの場所と優先順位 | P2 |
-| S12 | Copilot の MCP とプラグインに、プロジェクト単位の置き場所があるか | P2 |
+| S11 | Copilot CLI と Copilot アプリが読む指示ファイルの場所と優先順位 | P2(判定済み: Copilot CLI と VS Code は公式。どちらも上書きではなく合成で、優先順位は定めていないと明記。Copilot アプリは公式文書にファイルの場所が無く、未確認。「単位の置き場所」) |
+| S12 | Copilot の MCP とプラグインに、プロジェクト単位の置き場所があるか | P2(判定済み: ある。Copilot CLI の MCP は `.mcp.json` と `.github/mcp.json`、プラグインの有効化は `.github/copilot/settings.json` と `settings.local.json`。VS Code の MCP は `.vscode/mcp.json` と `.mcp.json`。「単位の置き場所」) |
 | S13 | Copilot のマーケットプレイスの一覧を、書き込みなしで取る方法 | P5 |
 | S14 | MCP レジストリの API(エンドポイント、ページング、検索、利用規約、レート制限) | P5 |
 | S15 | ローカルサーバーの守りが効くか(「守りの検証(S15)」) | P1(合格) |
-| S16 | プロジェクトの発見が実用の速さで終わるか(初回 10 秒未満、キャッシュありで 1 秒未満) | P2 |
+| S16 | プロジェクトの発見が実用の速さで終わるか(初回 10 秒未満、キャッシュありで 1 秒未満) | P2(合格: 実 HOME で初回 145〜182 ms、キャッシュあり 26〜28 ms。「単位の置き場所」) |
 
 公式文書で確かめられない置き場所は、画面に「未確認」と出し、操作の対象にしない。
+
+## 単位の置き場所
+
+単位(個人 / プロジェクト / ローカル)の層は `ac scopes` が受け持つ(`src/core/projects.ts`、`src/core/scopes.ts`、`src/commands/scopes.ts`)。`inventory` は個人の単位だけを返すまま変えていない。JSON スナップショットの差分が 0 であることと、プロジェクトがあっても `inventory --json` が同じバイト列であること(`test/scopes.test.ts`)で固定している。
+
+**プロジェクトの発見(S16)。** 3 つの記録から、フォルダの名前だけを読む。
+
+| 記録 | 読むもの | 読まないもの |
+|---|---|---|
+| Claude Code: `~/.claude.json` | `projects` のキー(と、ローカルの単位として各キーの `mcpServers`) | アカウント・履歴など、他のキーすべて |
+| Copilot CLI: `~/.copilot/session-state/<id>/workspace.yaml` | 行頭の `cwd:` の 1 行(YAML のスカラーとしてだけ解釈する) | セッション名・要約など、他の行すべて |
+| VS Code: `%APPDATA%/Code/User/workspaceStorage/<hash>/workspace.json` | `folder`(`file:` のものだけ) | リモートとマルチルートのワークスペース |
+
+`~/.copilot/config.json`(信頼済みフォルダもここにある)は SPEC §6.2 のとおり読まない。記録されたフォルダのうち、実在し、上へたどって `.git`(ディレクトリでもファイルでもよい)が見つかるものだけを残し、その作業ツリーの根をプロジェクトとする。`git` は起動しない。結果は `~/.agent-console/projects-cache.json` に、記録ファイルのスタンプ(更新時刻と大きさ、ディレクトリなら項目数)と一緒にキャッシュする。Copilot CLI のセッションは 1 件ずつの答えもキャッシュし、新しいセッションのディレクトリだけを開く。キャッシュには記録ファイルから読んだフォルダ名以外を入れない(テストで確かめている)。
+
+実測(この PC の実 HOME、2026-11-08): Claude の記録 110 件、Copilot CLI のセッション 2,085 件、VS Code のワークスペース 24 件から、プロジェクト 70 件(実在しない 59 件・git 外 44 件を除外)。発見だけで初回 145〜182 ms、キャッシュあり 26〜28 ms。`ac scopes --json` 全体(プロセスの起動を含む)で約 280 ms。
+
+**置き場所と読み手(S11・S12)。** 1 つの置き場所を複数のハーネスが読むときは、1 行に読み手を並べる(`.claude/skills` は 3 つとも読む)。確度が公式でない読み手は、画面で「未確認」(破線)になる。
+
+| 種別 | 単位 | 置き場所 | Claude Code | Copilot CLI | VS Code |
+|---|---|---|---|---|---|
+| skill | プロジェクト | `.claude/skills/<name>/SKILL.md` | 公式 | 公式 | 公式 |
+| skill | プロジェクト | `.github/skills/<name>/SKILL.md` | — | 公式 | 公式 |
+| skill | プロジェクト | `.agents/skills/<name>/SKILL.md` | — | 公式 | 公式 |
+| agent | プロジェクト | `.claude/agents/<name>.md` | 公式 | 既報(changelog) | 公式 |
+| agent | プロジェクト | `.github/agents/<name>.agent.md`(`.md` も) | — | 公式 | 公式 |
+| MCP | プロジェクト | `.mcp.json`(`mcpServers`) | 公式 | 公式 | 公式 |
+| MCP | プロジェクト | `.github/mcp.json`(`mcpServers`) | — | 公式 | — |
+| MCP | プロジェクト | `.vscode/mcp.json`(`servers`、JSONC) | — | —(1.0.22 で廃止) | 公式 |
+| MCP | ローカル | `~/.claude.json` の `projects["<path>"].mcpServers` | 公式 | — | — |
+
+**優先順位。** 同じ名前が複数の単位にあるとき、どれが効くか。種別とハーネスで向きが逆になるものがある。公式のものだけを画面の「上書きされて効いていない」に使う。
+
+| ハーネス | 種別 | 優先順位(左が勝つ) | 確度 | 画面で使うか |
+|---|---|---|---|---|
+| Claude Code | MCP | ローカル > プロジェクト > 個人 | 公式 | 使う |
+| Claude Code | skill | 個人 > プロジェクト | 公式 | 使う |
+| Claude Code | agent | プロジェクト > 個人 | 公式 | 使う |
+| Copilot CLI | MCP | プロジェクト > 個人 | 公式 | 使う |
+| Copilot CLI | agent | 個人 > プロジェクト | 公式 | 使う |
+| Copilot CLI | skill | プロジェクト > 個人 | 既報(changelog 1.0.55) | 使わない |
+| VS Code | MCP / agent / skill | 定めが無い(skill は同名を両方出す) | 公式 | 使わない |
+
+**指示ファイル(S11、P3 で表示する)。** Claude Code: 個人 `~/.claude/CLAUDE.md`・`~/.claude/rules/`、プロジェクト `CLAUDE.md`・`.claude/CLAUDE.md`・`.claude/rules/`、ローカル `CLAUDE.local.md`。上書きではなく連結。Copilot CLI: 個人 `~/.copilot/copilot-instructions.md`・`~/.copilot/instructions/`、プロジェクト `.github/copilot-instructions.md`・`.github/instructions/`・`AGENTS.md`・`CLAUDE.md`・`GEMINI.md`。合成し、優先順位は定めていないと明記。VS Code も合成。Copilot アプリは公式文書にファイルの場所が無く、未確認。
+
+**プラグイン(S12、P2 の後半で表示する)。** Claude Code: 有効化は `~/.claude/settings.json`・`.claude/settings.json`・`.claude/settings.local.json` の `enabledPlugins`(ローカル > プロジェクト > 個人、公式)、実体は `~/.claude/plugins/`。Copilot CLI: 有効化は `~/.copilot/settings.json`・`.github/copilot/settings.json`・`.github/copilot/settings.local.json`(公式)、実体は `~/.copilot/installed-plugins/`。
+
+出典: Claude Code は https://code.claude.com/docs/en/(mcp・skills・sub-agents・memory・settings・plugins)、Copilot CLI は https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/ と https://github.com/github/copilot-cli/blob/main/changelog.md 、VS Code は https://code.visualstudio.com/docs/agents/reference/ と https://code.visualstudio.com/docs/agent-customization/ 。確認日 2026-11-08。
+
+**未確認のまま残したもの。** Claude Code の commands の個人とプロジェクトの優先順位(skill と同じと推測)。Copilot CLI の commands の優先順位、`CLAUDE.local.md` を読むか。VS Code の MCP と agent の同名の扱い。Copilot アプリが読むファイルの場所。
+
+**画面。** ツールバーの「単位」セグメント(すべて / 個人 / プロジェクト / ローカル、既定は個人)と、その横のプロジェクト欄で絞る。表の「単位」列にバッジとパスを出す。プロジェクト・ローカルの行は読み取りのみで、スイッチも削除も描かない。適用先の列は、その置き場所を読むか(●)、上書きされて効いていないか(↓)、読むかが未確認か(◌、破線)、読まない置き場所か(·、破線)を示す。個人の行が、あるプロジェクトで別の単位に負けているときは「N プロジェクトで上書きあり」と行に出し、詳細ペインにプロジェクトと勝つ単位を書く。単位の層が読めなかったときは、個人の行はそのままで、プロジェクト・ローカルを選んだときに帯で伝える。
 
 ## テスト
 
@@ -221,6 +273,7 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 - **実 HOME では書き込まない。** 実環境での実測は読み取りだけで、前後のカナリアを比べる。
 - **サーバーの陰性と陽性。** トークンなし・誤ったトークン・Host の偽装・別の Origin・語彙外のコマンド・digest なしの apply・確認と違う digest・API からの import を、それぞれ断る。正しい組み合わせだけが通る。
 - **エンジンのスレッド。** 先入れ先出し、読み取りの上限、書き込みに上限が無いこと(`src/server/engine-queue.test.ts`)。
+- **単位の層。** 偽の HOME と偽のリポジトリで、発見(陽性・実在しない・git 外)、キャッシュ(当たり・新しいセッションだけ読む・壊れたキャッシュ)、置き場所ごとの読み手、優先順位(各規則の陽性と、規則が無い・既報のときに何も言わない陰性)、読めないファイルの報告を確かめる(`test/scopes.test.ts`)。記録ファイルのアカウント情報とセッションの文が出力にもキャッシュにも出ないこと、`inventory` が何も書かず `scopes` がキャッシュだけを書くことも確かめる。画面側の導出は `test/ui-scopes.test.ts`。
 - **今後のフェーズ。** 単位は偽の HOME と偽のリポジトリで、プロジェクトの発見は偽の記録ファイルで、指示ファイルは CRLF・LF・BOM ありの 3 種で確かめる。記録ファイルの読む必要の無いキー(アカウント情報など)が、出力にもログにも出ないことをテストで確かめる。
 
 ## リスク
