@@ -76,17 +76,17 @@
 <style>
   .unavailable {
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   summary {
     font-size: var(--t-small);
     cursor: pointer;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   summary:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
 
@@ -108,12 +108,12 @@
     max-height: 14rem;
     overflow: auto;
     margin-top: var(--gap-2);
-    border: 1px solid var(--rule);
-    background: var(--paper-panel);
+    border: 1px solid var(--line);
+    background: var(--surface-2);
   }
 
   .diff:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
@@ -133,10 +133,10 @@
   .gutter {
     width: 2.5rem;
     text-align: right;
-    /* --ink-2: --ink-3 fell to 2.9:1 on the added-line wash (WCAG 1.4.3). */
-    color: var(--ink-2);
+    /* --fg-2: --fg-3 fell to 2.9:1 on the added-line wash (WCAG 1.4.3). */
+    color: var(--fg-2);
     user-select: none;
-    border-right: 1px solid var(--rule);
+    border-right: 1px solid var(--line);
   }
 
   .sign {
@@ -165,8 +165,8 @@
   }
 
   .line--gap td {
-    color: var(--ink-2);
-    background: var(--paper-inset);
+    color: var(--fg-2);
+    background: var(--surface-inset);
     text-align: center;
   }
 </style>

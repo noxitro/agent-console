@@ -127,17 +127,18 @@
      * The wash needs a surface of its own, not the one behind it.
      *
      * `--fault-wash` is translucent, and everywhere else in the interface it
-     * blends over `--paper`. This plate is a direct child of the app shell,
-     * whose ground is the darker `--desk`, so the same token resolved to a
-     * fourth surface nobody had checked: `--ink-2` measured 3.91:1 there
+     * blends over `--surface`. This plate is a direct child of the app shell,
+     * whose ground is the darker `--canvas`, so the same token resolved to a
+     * fourth surface nobody had checked: `--fg-2` measured 3.91:1 there
      * (the file path, the hint) and `--fault-text` 4.37:1 (the 12px exit code),
      * both under the 4.5:1 floor — on the one panel that exists to be read when
-     * something has gone wrong. Painting `--paper` underneath restores the
+     * something has gone wrong. Painting `--surface` underneath restores the
      * surface every other use of this wash is measured against.
      */
-    background-color: var(--paper);
+    background-color: var(--surface);
     background-image: linear-gradient(var(--fault-wash), var(--fault-wash));
     border: 2px solid var(--fault);
+    border-radius: var(--radius-panel);
     color: var(--fault-text);
   }
 
@@ -168,7 +169,7 @@
 
   .fault__message {
     font-size: var(--t-md);
-    color: var(--ink);
+    color: var(--fg);
     overflow-wrap: anywhere;
     max-width: 74ch;
   }
@@ -181,31 +182,31 @@
   }
 
   .fault__hint {
-    color: var(--ink-2);
+    color: var(--fg-2);
     max-width: 70ch;
   }
 
   details {
     border: 1px solid var(--fault);
-    background: var(--paper);
+    background: var(--surface);
   }
 
   summary {
     padding: var(--gap-1) var(--gap-3);
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
     cursor: pointer;
   }
 
   summary:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
   .fault__partial {
     padding: var(--gap-2) var(--gap-3);
     border: 1px solid var(--fault);
-    background: var(--paper);
+    background: var(--surface);
     color: var(--fault-text);
     max-width: 70ch;
   }
@@ -213,10 +214,10 @@
   pre {
     margin: 0;
     padding: var(--gap-3);
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
     font-family: var(--mono);
     font-size: var(--t-small);
-    color: var(--ink);
+    color: var(--fg);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     max-height: 12rem;
@@ -224,7 +225,7 @@
   }
 
   pre:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 

@@ -88,6 +88,12 @@ export interface InstalledFinding {
   detail: string;
 }
 
+export interface PluginRef {
+  id: string;
+  name: string;
+  marketplace?: string;
+}
+
 export interface InstalledRow {
   id: string;
   kind: InstalledKind;
@@ -98,6 +104,10 @@ export interface InstalledRow {
   realPath?: string;
   description?: string;
   version?: string;
+  /** A plugin row: the plugin itself. A part a plugin brought: the plugin it came from (its cost is on the plugin's row). */
+  plugin?: PluginRef;
+  /** Other units holding a row of the same kind and name. Which one wins is not stated. */
+  alsoIn?: ScopeKind[];
   components?: { skills: string[]; commands: string[]; agents: string[]; mcpServers: string[] };
   transport?: string;
   imports?: { path: string; chars: number }[];
@@ -147,6 +157,18 @@ export const KIND_LABEL: Record<InstalledKind, string> = {
 };
 
 export const KIND_ORDER: readonly InstalledKind[] = ["instructions", "skill", "agent", "command", "mcp", "plugin"];
+
+/** The Installed view's sections, top to bottom (the Copilot app's order, plus 指示ファイル). */
+export const SECTION_ORDER: readonly InstalledKind[] = ["plugin", "mcp", "skill", "agent", "command", "instructions"];
+
+export const SECTION_LABEL: Record<InstalledKind, string> = {
+  plugin: "Plugins",
+  mcp: "MCP Servers",
+  skill: "Skills",
+  agent: "Agents",
+  command: "Commands",
+  instructions: "指示ファイル",
+};
 
 export const STATE_LABEL: Record<ReachState, string> = {
   enabled: "有効",

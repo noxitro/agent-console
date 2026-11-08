@@ -182,7 +182,7 @@
   >
     <defs>
       <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-        <path d="M20 0H0V20" fill="none" stroke="var(--rule)" stroke-width="0.4" opacity="0.35" />
+        <path d="M20 0H0V20" fill="none" stroke="var(--line)" stroke-width="0.4" opacity="0.35" />
       </pattern>
       <pattern
         id="hatch"
@@ -191,7 +191,7 @@
         patternUnits="userSpaceOnUse"
         patternTransform="rotate(45)"
       >
-        <path d="M0 0V6" stroke="var(--ink-3)" stroke-width="1.4" />
+        <path d="M0 0V6" stroke="var(--fg-3)" stroke-width="1.4" />
       </pattern>
     </defs>
 
@@ -546,7 +546,7 @@
 
   text {
     font-family: var(--sans);
-    fill: var(--ink);
+    fill: var(--fg);
   }
 
   .mono-8,
@@ -578,7 +578,7 @@
   }
 
   .muted {
-    fill: var(--ink-2);
+    fill: var(--fg-2);
   }
   .fault {
     fill: var(--fault-text);
@@ -586,7 +586,7 @@
 
   .zone {
     font-size: 10px;
-    fill: var(--ink-2);
+    fill: var(--fg-2);
     dominant-baseline: middle;
     text-anchor: middle;
   }
@@ -594,26 +594,26 @@
   /* Frame ------------------------------------------------------------ */
   .frame rect {
     fill: none;
-    stroke: var(--ink);
+    stroke: var(--fg);
     stroke-width: 1.4;
   }
   .frame__inner {
-    stroke: var(--rule);
+    stroke: var(--line);
     stroke-width: 0.8;
   }
   .frame path {
-    stroke: var(--rule);
+    stroke: var(--line);
     stroke-width: 0.8;
   }
 
   /* Blocks ------------------------------------------------------------ */
   .block rect {
-    fill: var(--paper-panel);
-    stroke: var(--ink);
+    fill: var(--surface-2);
+    stroke: var(--fg);
     stroke-width: 1.3;
   }
   .block--target.is-disabled rect {
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-dasharray: 5 3;
   }
   .block__title {
@@ -626,33 +626,33 @@
     font-size: 11.5px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    fill: var(--ink-2);
+    fill: var(--fg-2);
   }
   .asset {
     font-family: var(--mono);
     font-size: 12.5px;
-    fill: var(--ink);
+    fill: var(--fg);
   }
   .hairline {
-    stroke: var(--rule);
+    stroke: var(--line);
     stroke-width: 0.8;
     fill: none;
   }
   /* Conductor numbers are read against the revision flags, so they are text. */
   .no {
-    fill: var(--ink-2);
+    fill: var(--fg-2);
     font-size: 10.5px;
   }
 
   /* Terminals --------------------------------------------------------- */
   .pin {
-    fill: var(--paper);
-    stroke: var(--ink);
+    fill: var(--surface);
+    stroke: var(--fg);
     stroke-width: 1.3;
   }
   .pin--open,
   .pin--shared {
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
   }
   .pin--shared {
     stroke-dasharray: 2 1.6;
@@ -662,16 +662,16 @@
     stroke: var(--fault);
   }
   .pin--unwired {
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-dasharray: 2 1.6;
   }
   .pin__core {
-    fill: var(--ink);
+    fill: var(--fg);
     stroke: none;
   }
   .terminal__hatch {
     fill: url(#hatch);
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-width: 1;
   }
   .state--severed,
@@ -679,22 +679,22 @@
     fill: var(--fault-text);
   }
   .state--unwired {
-    fill: var(--ink-2);
+    fill: var(--fg-2);
   }
   .state--linked {
-    fill: var(--ink-2);
+    fill: var(--fg-2);
   }
 
   .strand__line,
   .legend__wire {
     fill: none;
-    stroke: var(--ink);
+    stroke: var(--fg);
     stroke-width: 1.2;
   }
 
   .junction rect {
-    fill: var(--paper-inset);
-    stroke: var(--ink);
+    fill: var(--surface-inset);
+    stroke: var(--fg);
     stroke-width: 1.4;
   }
   .junction text {
@@ -713,7 +713,7 @@
   }
   .wire__line {
     fill: none;
-    stroke: var(--ink);
+    stroke: var(--fg);
     stroke-width: 1.2;
   }
   .wire--severed .wire__line,
@@ -725,14 +725,14 @@
   }
   .wire--unwired .wire__line,
   .legend__wire.wire--unwired {
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-dasharray: 3 3.5;
   }
   .legend__wire.wire--severed {
     stroke: var(--fault);
   }
   .wire__gap {
-    fill: var(--paper);
+    fill: var(--surface);
     stroke: none;
   }
   .wire__break {
@@ -746,17 +746,17 @@
   }
 
   .revision path {
-    fill: var(--paper);
-    stroke: var(--ink);
+    fill: var(--surface);
+    stroke: var(--fg);
     stroke-width: 1.2;
   }
   .revision text {
     font-size: 10px;
-    fill: var(--ink);
+    fill: var(--fg);
   }
   .revision-cloud {
     fill: none;
-    stroke: var(--ink);
+    stroke: var(--fg);
     stroke-width: 1;
     stroke-dasharray: none;
     opacity: 0.55;
@@ -773,7 +773,7 @@
 
   .tap {
     fill: none;
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-width: 1;
     stroke-dasharray: 4 4;
   }
@@ -809,27 +809,27 @@
     }
     100% {
       r: 1.6;
-      fill: var(--ink);
+      fill: var(--fg);
     }
   }
 
   /* Skeleton ---------------------------------------------------------- */
   .skeleton rect {
-    fill: var(--paper-panel);
-    stroke: var(--ink-3);
+    fill: var(--surface-2);
+    stroke: var(--fg-3);
     stroke-width: 1;
     stroke-dasharray: 6 4;
   }
   .skeleton__wire {
     fill: none;
-    stroke: var(--ink-3);
+    stroke: var(--fg-3);
     stroke-width: 1;
     stroke-dasharray: 3 5;
     opacity: 0.55;
   }
   .skeleton__label {
     font-size: 16px;
-    fill: var(--ink-2);
+    fill: var(--fg-2);
     letter-spacing: 0.08em;
   }
   .skeleton--void .skeleton__label {
@@ -840,7 +840,7 @@
     opacity: 0.4;
   }
   .sweep path {
-    stroke: var(--ink);
+    stroke: var(--fg);
     stroke-width: 1.2;
     opacity: 0.35;
   }
@@ -867,18 +867,18 @@
   /* Legend / empty ----------------------------------------------------- */
   .legend rect {
     fill: none;
-    stroke: var(--rule-strong);
+    stroke: var(--line-strong);
     stroke-width: 1;
   }
 
   .empty rect {
-    fill: var(--paper);
-    stroke: var(--ink);
+    fill: var(--surface);
+    stroke: var(--fg);
     stroke-width: 1.4;
   }
   .empty__cmd {
-    fill: var(--paper-inset);
-    stroke: var(--rule-strong);
+    fill: var(--surface-inset);
+    stroke: var(--line-strong);
     stroke-width: 1;
   }
   .empty__title {
@@ -887,7 +887,7 @@
   }
   .empty__body {
     font-size: 14px;
-    fill: var(--ink-2);
+    fill: var(--fg-2);
   }
 
   /* Re-survey badge ---------------------------------------------------- */
@@ -899,11 +899,11 @@
     align-items: center;
     gap: var(--gap-2);
     padding: 0.2rem 0.6rem;
-    background: var(--paper-inset);
-    border: 1px solid var(--rule-strong);
+    background: var(--surface-inset);
+    border: 1px solid var(--line-strong);
     font-size: var(--t-micro);
     letter-spacing: 0.08em;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
   .diagram--busy svg {
     opacity: 0.55;
@@ -937,7 +937,7 @@
         stroke-width: 2.4;
       }
       to {
-        stroke: var(--ink);
+        stroke: var(--fg);
         stroke-width: 1.2;
       }
     }
@@ -953,7 +953,7 @@
       }
       to {
         r: 1.6;
-        fill: var(--ink);
+        fill: var(--fg);
       }
     }
 

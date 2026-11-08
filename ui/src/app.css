@@ -1,61 +1,68 @@
 /*
- * The sheet.
+ * The console.
  *
- * Light, warm, and printed — the world this interface commits to is a service
- * manual lying open on a desk under room light, not a dashboard glowing in a
- * dark room. There is no dark theme on purpose: the scene decides the value
- * key, and this scene is paper.
+ * Dark and fixed — the colour key of the GitHub Copilot app's Installed screen
+ * (PRODUCT.md Brand Commitments, 2026-11): a near-black canvas, panels one step
+ * lighter, low-contrast hairlines, light grey text, one blue for selection and
+ * focus, green for "enabled / in sync" and red for faults only. There is no
+ * light theme on purpose; Primer's assets and brand colours are not imported,
+ * only the values are brought close.
  *
  * Two families, two jobs. Zen Kaku Gothic New carries every word of Japanese
- * and every heading; M PLUS 1 Code carries paths, counts and conductor numbers
- * — measurements and identifiers, which is the only thing a mono face is for
- * here. Both are bundled under `/fonts` because the WebView has no network.
+ * and every heading; M PLUS 1 Code carries paths, counts and identifiers. Both
+ * are bundled under `/fonts` because the page loads nothing from the network.
+ *
+ * Contrast (measured, WCAG 2.x relative luminance; DESIGN.md Colors):
+ *   --fg 14.2:1 on --surface, 11.9:1 on --surface-hover
+ *   --fg-2 7.5:1 on --surface, 6.3:1 on --surface-hover
+ *   --control 3.7:1 on --surface, 3.4:1 on --surface-2 (UI component floor 3:1)
+ *   --on-accent 5.0:1 on --accent, --on-fault 5.9:1 on --fault-fill
+ *   --pass-text 8.5:1, --fault-text 6.8:1, --accent-text 7.7:1 on --surface
  */
 
 :root {
-  /* Palette — approved with the direction. */
-  --paper: #f4f1e8;
-  --paper-panel: #efebde;
-  --paper-inset: #e7e2d2;
-  --desk: #ddd6c2;
+  /* Surfaces, darkest to lightest. */
+  --canvas: #0e1014; /* body: the window behind the panels */
+  --surface-inset: #111317; /* sunk: code, the facts grid, fixture strip */
+  --surface: #16191e; /* every panel */
+  --surface-2: #1d2127; /* toolbar, sticky header, section heading, status bar */
+  --surface-hover: #232830; /* a row or control under the pointer */
 
-  --ink: #1a2b3c;
-  /*
-   * Both greys are tinted toward the ink's blue rather than being neutral, and
-   * both clear a floor: --ink-2 stays ≥4.5:1 on every surface it is used on
-   * (paper, panel, inset), --ink-3 stays ≥3:1 because it draws un-wired
-   * conductors and open terminals, which carry meaning even though they are not
-   * text.
-   */
-  --ink-2: #4f6274; /* secondary text — 5.5:1 on paper, 4.8:1 on inset */
-  --ink-3: #74838f; /* hairlines, dormant conductors; never body text */
-  --rule: rgba(26, 43, 60, 0.22);
-  --rule-strong: rgba(26, 43, 60, 0.5);
+  /* Text. */
+  --fg: #e4e7eb;
+  --fg-2: #a2aab5; /* secondary text — 7.5:1 on surface, 6.3:1 on hover */
+  --fg-3: #717a87; /* disabled and dormant marks; never body text (≥3:1 on surfaces) */
 
-  --fault: #c8452a; /* conductors, break marks, large type */
-  --fault-text: #9e3520; /* the same signal at body size — 6.2:1 */
-  --fault-wash: rgba(200, 69, 42, 0.09);
+  /* Lines. Hairlines are decoration; a control's own frame is --control (≥3:1). */
+  --line: #2a2f37;
+  --line-strong: #353b45;
+  --control: #6a7381;
 
-  --pass: #2e7d4f;
-  --pass-text: #26683f; /* 5.9:1 */
-  --pass-wash: rgba(46, 125, 79, 0.1);
+  /* The one accent: selection, focus, the primary action. */
+  --accent: #2f6bd8;
+  --accent-hover: #285fc6;
+  --on-accent: #ffffff;
+  --accent-text: #7cacf8; /* links, focus ring, the selected row's bar */
+  --focus: var(--accent-text);
+  --select-wash: rgba(47, 107, 216, 0.18);
 
-  --caution-wash: rgba(26, 43, 60, 0.06);
-
-  /*
-   * Hover lifts. A control under the pointer rises a step towards the light:
-   * paper to a brighter sheet, ink to a lighter ink. The fault fill carries
-   * white, the one colour on it that clears 4.5:1.
-   */
-  --paper-lift: #fffdf6;
-  --ink-lift: #24384c;
+  --fault: #e0524a; /* frames, marks, large type */
+  --fault-text: #f47f78; /* the same signal at body size — 6.8:1 */
+  --fault-fill: #b8352f; /* the danger button's hover fill, under --on-fault */
+  --fault-wash: rgba(224, 82, 74, 0.14);
   --on-fault: #ffffff;
 
-  /* The confirmation dialogs: the one place a second sheet lies on top. */
-  --shadow-dialog:
-    0 2px 4px rgba(26, 43, 60, 0.12),
-    0 28px 56px -28px rgba(26, 43, 60, 0.55);
-  --backdrop: rgba(26, 43, 60, 0.42);
+  --pass: #3aa66f;
+  --pass-text: #62c78f; /* 8.5:1 */
+  --pass-wash: rgba(58, 166, 111, 0.14);
+
+  /* Shapes: a row and a control are framed and slightly rounded, never pills. */
+  --radius-control: 4px;
+  --radius-panel: 6px;
+
+  /* The confirmation dialogs: the one layer that floats. */
+  --shadow-dialog: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 24px 48px -12px rgba(0, 0, 0, 0.7);
+  --backdrop: rgba(4, 5, 7, 0.66);
 
   /* Type */
   --sans: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
@@ -78,7 +85,7 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
-  color-scheme: light;
+  color-scheme: dark;
   /*
    * The browser's own text size, not a fixed 16px. Every size here is in rem, so
    * a reader who has set a larger default in the browser gets the whole console
@@ -106,8 +113,8 @@ body {
  */
 body {
   margin: 0;
-  background: var(--desk);
-  color: var(--ink);
+  background: var(--canvas);
+  color: var(--fg);
   font-family: var(--sans);
   font-size: var(--t-body);
   line-height: 1.65;
@@ -139,13 +146,13 @@ p {
   font-size: var(--t-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--fg-2);
 }
 
 .path {
   font-family: var(--mono);
   font-size: var(--t-small);
-  color: var(--ink-2);
+  color: var(--fg-2);
   overflow-wrap: anywhere;
 }
 
@@ -187,10 +194,10 @@ button {
   gap: var(--gap-2);
   min-height: 2.25rem;
   padding: 0 var(--gap-4);
-  border: 1.5px solid var(--ink);
-  border-radius: 2px;
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--fg);
   font-size: var(--t-body);
   letter-spacing: 0.02em;
   /* A label is one word; on a narrow window the row of buttons wraps instead. */
@@ -203,23 +210,22 @@ button {
 }
 
 .btn:hover:not(:disabled, [aria-busy="true"]) {
-  background: var(--paper-lift);
-  box-shadow: 0 1px 0 var(--rule-strong);
+  background: var(--surface-hover);
+  border-color: var(--fg-2);
 }
 
 .btn:active:not(:disabled, [aria-busy="true"]) {
   transform: translateY(1px);
-  box-shadow: none;
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .btn:disabled {
-  border-color: var(--ink-3);
-  color: var(--ink-3);
+  border-color: var(--fg-3);
+  color: var(--fg-3);
   background: transparent;
   cursor: not-allowed;
 }
@@ -227,14 +233,14 @@ button {
 /*
  * The console after 終了, or in a tab without a key (`.app--frozen`, App.svelte):
  * nothing answers any more, and the controls must not look as if they would.
- * They take the muted ink of `:disabled`; the text around them keeps its ink,
+ * They take the muted grey of `:disabled`; the text around them keeps its colour,
  * because what the console last read is still worth reading.
  */
 .app--frozen .btn,
 .app--frozen .btn--primary,
 .app--frozen .icon-btn {
-  border-color: var(--ink-3);
-  color: var(--ink-3);
+  border-color: var(--fg-3);
+  color: var(--fg-3);
   background: transparent;
 }
 
@@ -242,23 +248,24 @@ button {
 .app--frozen .chip:not([aria-checked="true"]),
 .app--frozen .toggle,
 .app--frozen input {
-  color: var(--ink-3);
+  color: var(--fg-3);
 }
 
-/* The selected tab and chip keep their ink fill, so they recede by a step instead. */
+/* The selected tab and chip keep their accent fill, so they recede by a step instead. */
 .app--frozen .tab[aria-current="page"],
 .app--frozen .chip[aria-checked="true"] {
-  background: var(--ink-2);
+  background: var(--fg-3);
+  color: var(--canvas);
 }
 
 .btn--primary {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 .btn--primary:hover:not(:disabled, [aria-busy="true"]) {
-  background: var(--ink-lift);
+  background: var(--accent-hover);
 }
 
 .btn--primary:disabled {
@@ -268,17 +275,17 @@ button {
 /*
  * The commit button carries the weight of a write, but it is not a fault.
  * Signal red is reserved for faults and severed conductors, so the commit
- * button stays in ink like every other affirmative control — the ceremony of
+ * button stays in the accent blue like every other affirmative control — the ceremony of
  * the confirmation dialog is what marks the action as consequential.
  */
 .btn--commit {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .btn--commit:hover:not(:disabled, [aria-busy="true"]) {
-  background: var(--ink-lift);
+  background: var(--accent-hover);
 }
 
 .btn--commit:disabled {
@@ -293,13 +300,13 @@ button {
 .btn--danger {
   border-color: var(--fault);
   color: var(--fault-text);
-  background: var(--paper);
+  background: var(--surface-2);
 }
 
 .btn--danger:hover:not(:disabled, [aria-busy="true"]),
 .btn--danger:focus-visible:not(:disabled, [aria-busy="true"]) {
-  background: var(--fault);
-  border-color: var(--fault);
+  background: var(--fault-fill);
+  border-color: var(--fault-fill);
   color: var(--on-fault);
 }
 
@@ -320,14 +327,14 @@ button {
   border: 0;
   padding: 0;
   background: none;
-  color: var(--ink);
+  color: var(--fg);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .linklike:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -376,8 +383,8 @@ button {
  * button still filled solid red.
  */
 .btn[aria-busy="true"] {
-  border-color: var(--ink-3);
-  color: var(--ink-3);
+  border-color: var(--fg-3);
+  color: var(--fg-3);
   background: transparent;
   box-shadow: none;
 }
@@ -392,13 +399,13 @@ button {
  * During a write the dialog holds a disabled 取消 beside a busy 適用中… . Greyed
  * identically they read as two dead buttons, and the difference — one is
  * unavailable, the other is the operation in progress — is the whole thing the
- * owner is watching. The commit button keeps its ink and lets the label carry
+ * owner is watching. The commit button keeps its accent and lets the label carry
  * the state.
  */
 .btn--commit[aria-busy="true"] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 /* ------------------------------------------------------------------ */
@@ -420,8 +427,9 @@ button {
   white-space: nowrap;
   min-height: 1.75rem;
   padding: 0 var(--gap-2);
-  border: 1px solid var(--rule-strong);
-  background: var(--paper);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
   font-size: var(--t-small);
   cursor: pointer;
 }
@@ -430,7 +438,7 @@ button {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  border: 1px solid var(--ink-2);
+  border: 1px solid var(--fg-2);
   background: transparent;
 }
 
@@ -440,21 +448,21 @@ button {
 }
 
 .toggle:focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
 /* Busy, not disabled — pressing it is what makes it busy, and nothing else on
    screen changes until the follow-up survey starts. */
 .toggle[aria-busy="true"] {
-  color: var(--ink-3);
-  border-color: var(--rule);
+  color: var(--fg-3);
+  border-color: var(--line);
 }
 
 .toggle[aria-busy="true"] .toggle__dot,
 .toggle[aria-busy="true"][aria-checked="true"] .toggle__dot {
   background: transparent;
-  border-color: var(--ink-3);
+  border-color: var(--fg-3);
 }
 
 .badge {
@@ -464,11 +472,11 @@ button {
   min-width: 1.35rem;
   height: 1.35rem;
   padding: 0 var(--gap-1);
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--line-strong);
   font-size: var(--t-micro);
   font-family: var(--mono);
-  color: var(--ink-2);
-  background: var(--paper);
+  color: var(--fg-2);
+  background: var(--surface);
 }
 
 .badge--match {
@@ -493,7 +501,7 @@ button {
 /* Delivered, and switched off on the far side (SPEC §10.3): a solid, quiet fact
    — not a fault, and not the absence the dashed badges mean. */
 .badge--off {
-  background: var(--paper-inset);
+  background: var(--surface-inset);
 }
 
 /*
@@ -503,10 +511,10 @@ button {
  */
 .dialog {
   padding: 0;
-  border: 1.5px solid var(--ink);
-  border-radius: 2px;
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--fg);
   box-shadow: var(--shadow-dialog);
 }
 
@@ -553,11 +561,9 @@ button {
 /* ------------------------------------------------------------------ */
 
 .sheet {
-  background: var(--paper);
-  border: 1px solid var(--rule-strong);
-  box-shadow:
-    0 1px 2px rgba(26, 43, 60, 0.08),
-    0 14px 28px -18px rgba(26, 43, 60, 0.4);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
 }
 
 .panel-title {
@@ -565,7 +571,7 @@ button {
   align-items: baseline;
   gap: var(--gap-3);
   padding: var(--gap-3) var(--gap-4) var(--gap-2);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 
 .panel-title h2 {
@@ -601,4 +607,16 @@ button {
   *::after {
     transition-duration: 0.01ms !important;
   }
+}
+
+/*
+ * The focus ring on a selected segment. The ring is --focus everywhere, but on
+ * the accent fill of a chosen tab or chip it measured 2.2:1 — under the 3:1 a
+ * focus indicator needs against what it sits on. There it turns white (5.0:1
+ * on --accent). Doubled class for specificity over the components' own rules.
+ */
+.tab.tab[aria-current="page"]:focus-visible,
+.chip.chip[aria-checked="true"]:focus-visible,
+.seg.seg[aria-pressed="true"]:focus-visible {
+  outline-color: var(--on-accent);
 }

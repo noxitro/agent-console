@@ -42,6 +42,7 @@
   import Diagram from "./lib/Diagram.svelte";
   import FaultPlate from "./lib/FaultPlate.svelte";
   import InstalledView from "./lib/InstalledView.svelte";
+  import ScopePicker from "./lib/ScopePicker.svelte";
   import Icon from "./lib/Icon.svelte";
   import StatusBar from "./lib/StatusBar.svelte";
   import StatusDrawer from "./lib/StatusDrawer.svelte";
@@ -320,6 +321,10 @@
         </button>
       {/each}
     </nav>
+
+    {#if view === "installed"}
+      <div inert={frozen}><ScopePicker state={inst} /></div>
+    {/if}
 
     {#if view === "distribute"}
     <nav class="tabs" aria-label="資産の種別" inert={frozen}>
@@ -654,8 +659,9 @@
     gap: var(--gap-4);
     flex-wrap: wrap;
     padding: var(--gap-2) var(--gap-3);
-    background: var(--paper);
-    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-panel);
   }
 
   h1 {
@@ -671,15 +677,17 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0;
-    border: 1px solid var(--rule-strong);
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
   }
 
   .tab {
     min-height: 2rem;
     padding: 0 var(--gap-4);
     border: 0;
-    border-right: 1px solid var(--rule);
-    background: var(--paper);
+    border-right: 1px solid var(--line);
+    background: var(--surface-2);
     font-size: var(--t-small);
     letter-spacing: 0.08em;
     cursor: pointer;
@@ -690,16 +698,16 @@
   }
 
   .tab:hover:not([aria-current="page"]) {
-    background: var(--paper-panel);
+    background: var(--surface-hover);
   }
 
   .tab[aria-current="page"] {
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   .tab:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
@@ -737,7 +745,7 @@
     align-items: baseline;
     gap: var(--gap-2);
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
     white-space: nowrap;
   }
 
@@ -749,27 +757,28 @@
     align-items: center;
     gap: var(--gap-2);
     padding: var(--gap-2) var(--gap-3);
+    border-radius: var(--radius-panel);
     font-size: var(--t-small);
   }
 
   .strip--fault {
     border: 1px solid var(--fault);
-    background-color: var(--paper);
+    background-color: var(--surface);
     background-image: linear-gradient(var(--fault-wash), var(--fault-wash));
     color: var(--fault-text);
   }
 
   .strip--done {
     border: 1px solid var(--pass);
-    background-color: var(--paper);
+    background-color: var(--surface);
     background-image: linear-gradient(var(--pass-wash), var(--pass-wash));
     color: var(--pass-text);
   }
 
   .strip--fixture {
-    border: 1px dashed var(--rule-strong);
-    background: var(--paper-inset);
-    color: var(--ink-2);
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-inset);
+    color: var(--fg-2);
   }
 
   .tag {
@@ -783,7 +792,7 @@
   code {
     font-family: var(--mono);
     padding: 0 0.15em;
-    background: var(--paper-inset);
+    background: var(--surface-inset);
   }
 
   /* Workspace --------------------------------------------------------- */

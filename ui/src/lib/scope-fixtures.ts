@@ -7,7 +7,8 @@
  * between both harnesses, a switched-off one, an instruction file imported by
  * another, an `applyTo` file, an MCP server whose approval is unknown, a
  * location that is not confirmed, a plugin declared but not installed, an
- * unreadable file.
+ * unreadable file, the parts two plugins brought (one from a marketplace, one
+ * switched off), and a name held in two units.
  */
 
 import type {
@@ -204,10 +205,62 @@ function userRows(): InstalledRow[] {
       origin: "plugin",
       path: `${HOME}\\.claude\\plugins\\cache\\demo-market\\lint-pack\\0.4.0`,
       version: "0.4.0",
+      plugin: LINT_PACK,
       components: { skills: ["lint-pack:fix-style"], commands: ["lint-pack:lint"], agents: [], mcpServers: [] },
-      reach: [reach({ harness: "claude", state: "disabled", via: `${HOME}\\.claude\\plugins\\installed_plugins.json`, certainty: "official", stateSource: `${HOME}\\.claude\\settings.json#enabledPlugins`, cost: c(0), costBasis: "部品(skill・command・agent)の名前 + description の合計" })],
+      reach: [LINT_REACH],
     },
+    part("skill", "fix-style", `${LINT_DIR}\\skills\\fix-style\\SKILL.md`, LINT_PACK, LINT_REACH, "Rewrites a file to the house style."),
+    part("command", "lint", `${LINT_DIR}\\commands\\lint.md`, LINT_PACK, LINT_REACH, "Runs the linters on the changed files."),
+    {
+      id: "plugin:user:copilot:research-kit",
+      kind: "plugin",
+      name: "research-kit@team-market",
+      scope: "user",
+      origin: "plugin",
+      path: RESEARCH_DIR,
+      version: "2.1.0",
+      description: "Search, read and cite sources.",
+      plugin: RESEARCH_KIT,
+      components: { skills: ["research-kit:cite-sources"], commands: [], agents: ["research-kit:fact-checker"], mcpServers: ["paper-search"] },
+      reach: [RESEARCH_REACH],
+    },
+    part("mcp", "paper-search", `${RESEARCH_DIR}\\.mcp.json`, RESEARCH_KIT, RESEARCH_REACH),
+    part("skill", "cite-sources", `${RESEARCH_DIR}\\skills\\cite-sources\\SKILL.md`, RESEARCH_KIT, RESEARCH_REACH, "Formats citations for the sources a session read."),
+    part("agent", "fact-checker", `${RESEARCH_DIR}\\agents\\fact-checker.agent.md`, RESEARCH_KIT, RESEARCH_REACH, "Checks each claim against a second source."),
   ];
+}
+
+const LINT_DIR = `${HOME}\\.claude\\plugins\\cache\\demo-market\\lint-pack\\0.4.0`;
+const LINT_PACK = { id: "lint-pack@demo-market", name: "lint-pack", marketplace: "demo-market" };
+const LINT_REACH = reach({ harness: "claude", state: "disabled", via: `${HOME}\\.claude\\plugins\\installed_plugins.json`, certainty: "official", stateSource: `${HOME}\\.claude\\settings.json#enabledPlugins`, cost: c(0), costBasis: "部品(skill・command・agent)の名前 + description の合計" });
+
+const RESEARCH_DIR = `${HOME}\\.copilot\\installed-plugins\\team-market\\research-kit`;
+const RESEARCH_KIT = { id: "research-kit@team-market", name: "research-kit", marketplace: "team-market" };
+const RESEARCH_REACH = reach({ harness: "copilot", state: "enabled", via: RESEARCH_DIR, certainty: "official", stateSource: `${HOME}\\.copilot\\settings.json#enabledPlugins`, cost: c(214), costBasis: "部品(skill・agent)の 1 件分の合計(skill の location は推測)" });
+
+/** A row a plugin brought, the way the engine writes it (`putPluginParts`). */
+function part(kind: InstalledRow["kind"], name: string, file: string, plugin: { id: string; name: string; marketplace?: string }, parent: InstalledReach, description?: string): InstalledRow {
+  const row: InstalledRow = {
+    id: `${kind}:user:plugin:${parent.harness}:${plugin.id}:${name}`,
+    kind,
+    name,
+    scope: "user",
+    origin: "plugin",
+    path: file,
+    plugin,
+    reach: [
+      {
+        harness: parent.harness,
+        state: parent.state,
+        via: file,
+        certainty: parent.certainty,
+        ...(parent.stateSource !== undefined ? { stateSource: parent.stateSource } : {}),
+        note: `プラグイン ${plugin.id} の部品。有効・無効はプラグインごとに決まり、常時コストはプラグインの行で数える`,
+      },
+    ],
+  };
+  if (description !== undefined) row.description = description;
+  return row;
 }
 
 function projectRows(root: string): InstalledRow[] {
@@ -293,6 +346,16 @@ function projectRows(root: string): InstalledRow[] {
       reach: [reach({ harness: "copilot", state: "enabled", via: j(".github", "agents", "triage.agent.md"), certainty: "official+measured", cost: c(52), costBasis: "task ツールの説明の 1 行(実測)" })],
     },
     {
+      id: "agent:project:reviewer",
+      kind: "agent",
+      name: "reviewer",
+      scope: "project",
+      origin: "file",
+      path: j(".claude", "agents", "reviewer.md"),
+      description: "Reviews a change against this repository's checklist.",
+      reach: [reach({ harness: "claude", state: "enabled", via: j(".claude", "agents", "reviewer.md"), certainty: "official", cost: c(61), costBasis: "名前 + description" })],
+    },
+    {
       id: "mcp:project:db-read",
       kind: "mcp",
       name: "db-read",
@@ -312,6 +375,7 @@ function projectRows(root: string): InstalledRow[] {
       scope: "project",
       origin: "config",
       path: j(".claude", "settings.json"),
+      plugin: { id: "design-kit@demo-market", name: "design-kit", marketplace: "demo-market" },
       reach: [reach({ harness: "claude", state: "enabled", via: `${j(".claude", "settings.json")}#enabledPlugins`, certainty: "official", stateSource: `${j(".claude", "settings.json")}#enabledPlugins`, note: "導入の記録が無い(この単位で宣言だけされている)" })],
       findings: [{ code: "plugin.enabled-not-installed", level: "warn", detail: "enabledPlugins にあるが、導入の記録が無い" }],
     },
@@ -340,12 +404,21 @@ function projectRows(root: string): InstalledRow[] {
   ];
 }
 
+/** The engine's `markAlsoIn`: the same kind and name in more than one unit (instruction files aside). */
+function markAlsoIn(rows: InstalledRow[]): InstalledRow[] {
+  return rows.map((row) => {
+    if (row.kind === "instructions") return row;
+    const units = [...new Set(rows.filter((r) => r.kind === row.kind && r.name.toLowerCase() === row.name.toLowerCase()).map((r) => r.scope))];
+    return units.length < 2 ? row : { ...row, alsoIn: units.filter((u) => u !== row.scope) };
+  });
+}
+
 function totals(rows: InstalledRow[], scopes: ScopeKind[]): ScopeTotal[] {
   const out: ScopeTotal[] = [];
   for (const scope of scopes) {
     for (const harness of ["claude", "copilot"] as const) {
       const t: ScopeTotal = { scope, harness, chars: 0, tokens: 0, rows: 0, conditional: 0, unmeasured: 0 };
-      for (const row of rows.filter((r) => r.scope === scope)) {
+      for (const row of rows.filter((r) => r.scope === scope && !(r.kind !== "plugin" && r.plugin !== undefined))) {
         const rs = row.reach.filter((r) => r.harness === harness);
         if (rs.length === 0) continue;
         t.rows++;
@@ -370,7 +443,7 @@ export function fixtureInstalled(m: ScopeMachine, projectId: string | undefined)
   if (projectId !== undefined && project === undefined) throw new Error(`Unknown project id: ${projectId} (run \`ac projects\` first)`);
   const scopes: ScopeKind[] = project === undefined ? ["user"] : ["user", "project", "local"];
   // Only the first project carries project-level assets; the others are bare, which is common.
-  const rows = [...userRows(), ...(project !== undefined && project.id === "a1b2c3d4e5f6" ? projectRows(project.root) : [])];
+  const rows = markAlsoIn([...userRows(), ...(project !== undefined && project.id === "a1b2c3d4e5f6" ? projectRows(project.root) : [])]);
   const result: InstalledJson = {
     scopes,
     rows,

@@ -223,9 +223,10 @@
     display: flex;
     flex-direction: column;
     max-height: 18rem;
-    border: 1px solid var(--rule-strong);
+    border: 1px solid var(--line-strong);
     border-bottom: 0;
-    background: var(--paper);
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    background: var(--surface);
   }
 
   header {
@@ -234,8 +235,8 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--gap-2) var(--gap-3);
-    border-bottom: 1px solid var(--rule);
-    background: var(--paper-panel);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
   }
 
   h2 {
@@ -248,7 +249,7 @@
     font-size: var(--t-micro);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* Focusable so a keyboard can scroll it; the page itself does not scroll. */
@@ -260,7 +261,7 @@
   }
 
   .drawer__body:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
@@ -276,7 +277,7 @@
     align-items: baseline;
     column-gap: var(--gap-3);
     padding: var(--gap-1) 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line);
     font-size: var(--t-small);
   }
 
@@ -287,10 +288,10 @@
 
   .tag {
     padding: 0 var(--gap-1);
-    border: 1px solid var(--rule-strong);
+    border: 1px solid var(--line-strong);
     font-size: var(--t-micro);
     text-align: center;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .is-fault .tag {
@@ -305,27 +306,27 @@
   .mono {
     font-family: var(--mono);
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .detail--quiet {
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /*
    * The engine's own sentence, under its reading. Not mono (DESIGN: 等幅は
-   * 識別子ルール — 「文章には決して使わない」) and not --ink-3 (that token is for
+   * 識別子ルール — 「文章には決して使わない」) and not --fg-3 (that token is for
    * disabled framing and dormant conductors, and measures 3.27:1 here).
    */
   .detail--source {
     grid-column: 2 / -1;
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .empty {
     padding: var(--gap-3) 0;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .warn {
@@ -347,17 +348,17 @@
     height: 1.9rem;
     border: 1px solid transparent;
     background: transparent;
-    color: var(--ink-2);
+    color: var(--fg-2);
     cursor: pointer;
   }
 
   .icon-btn:hover {
-    border-color: var(--rule-strong);
-    color: var(--ink);
+    border-color: var(--line-strong);
+    color: var(--fg);
   }
 
   .icon-btn:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: 1px;
   }
 </style>
