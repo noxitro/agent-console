@@ -24,6 +24,8 @@ export const COMMANDS = [
   "enable",
   "disable",
   "remove",
+  "projects",
+  "installed",
 ] as const;
 export type ApiCommand = (typeof COMMANDS)[number];
 
@@ -34,7 +36,42 @@ export const ASSET_COMMANDS: readonly ApiCommand[] = ["enable", "disable", "remo
 export const ASSET_KINDS = ["skill", "mcp", "agent", "command"] as const;
 
 /** Flags the GUI is allowed to pass. */
-export const FLAGS = ["--prune", "--yes", "--dry-run", "--move", "--prefer"] as const;
+export const FLAGS = ["--prune", "--yes", "--dry-run", "--move", "--prefer", "--refresh", "--project"] as const;
+
+/** `projects <action> <target>` (ARCHITECTURE.md「単位とプロジェクト」). */
+export const PROJECT_ACTIONS = ["pin", "unpin", "hide", "unhide", "add", "forget"] as const;
+
+/**
+ * Flags that belong to one command only. The flags of the inherited commands
+ * stay accepted wherever they were before (the engine rejects a flag its
+ * command does not define); these two are new and are tied to their command.
+ */
+export const COMMAND_ONLY_FLAGS: Readonly<Record<string, ApiCommand>> = {
+  "--refresh": "projects",
+  "--project": "installed",
+};
+
+/** A project id: the first 12 hex digits of a sha256 (src/scope/discover.ts `projectId`). */
+export function isProjectId(value: string): boolean {
+  return /^[0-9a-f]{12}$/.test(value);
+}
+
+/** Longest folder path `projects add` accepts. */
+export const MAX_FOLDER_PATH = 260;
+
+/**
+ * A folder for `projects add`: absolute (a drive path or a POSIX root), no
+ * control characters, no `..` segment, not starting with `-`. That the
+ * folder exists is checked by the engine.
+ */
+export function isFolderPath(value: string): boolean {
+  if (value.length === 0 || value.length > MAX_FOLDER_PATH) return false;
+  if (value.startsWith("-") || /[\u0000-\u001f"<>|?*]/.test(value)) return false;
+  if (!/^(?:[A-Za-z]:[\\/]|\/)/.test(value)) return false;
+  // `//host/share` and `\\host\share` are network shares (UNC), not local folders.
+  if (/^[\\/]{2}/.test(value)) return false;
+  return !value.split(/[\\/]/).includes("..");
+}
 
 /** Target ids accepted as the value of `--prefer` (SPEC §2, §10.5). */
 export const TARGETS = ["claude", "copilot-cli", "vscode", "vs2026", "opencode"] as const;
@@ -47,6 +84,15 @@ export const WRITE_COMMANDS: readonly ApiCommand[] = [
   "enable",
   "disable",
 ];
+
+/**
+ * Subcommands that write, but only to agent-console's own settings under
+ * `~/.agent-console/`: `projects` with an action. They are writes for
+ * `--read-only` and for the engine queue (no read ceiling).
+ */
+export function isConsoleSettingsWrite(args: readonly string[]): boolean {
+  return args[0] === "projects" && args[1] !== undefined && !args[1].startsWith("-");
+}
 
 /** Longest asset name passed through (SPEC §3 caps names at 64). */
 export const MAX_ASSET_NAME = 64;
@@ -95,6 +141,14 @@ export function validateArgs(args: unknown): Validation {
   }
 
   let i = 1;
+  if (command === "projects" && argv[i] !== undefined && !argv[i]!.startsWith("-")) {
+    const action = argv[i++] as string;
+    if (!includes(PROJECT_ACTIONS, action)) return { ok: false, message: `Unknown projects action: ${action}` };
+    const target = argv[i++];
+    if (target === undefined) return { ok: false, message: `projects ${action} needs a target` };
+    const valid = action === "add" ? isFolderPath(target) : isProjectId(target);
+    if (!valid) return { ok: false, message: `Unsupported projects target: ${target}` };
+  }
   if (ASSET_COMMANDS.includes(command)) {
     const kind = argv[i++];
     if (kind === undefined) return { ok: false, message: `${command} needs an asset kind and a name` };
@@ -106,8 +160,14 @@ export function validateArgs(args: unknown): Validation {
 
   while (i < argv.length) {
     const arg = argv[i++] as string;
-    if (!includes(FLAGS, arg)) {
+    const owner = COMMAND_ONLY_FLAGS[arg];
+    if (!includes(FLAGS, arg) || (owner !== undefined && owner !== command)) {
       return { ok: false, message: `Unsupported engine argument: ${arg}` };
+    }
+    if (arg === "--project") {
+      const value = argv[i++];
+      if (value === undefined || !isProjectId(value)) return { ok: false, message: "--project needs a project id" };
+      continue;
     }
     if (arg === "--prefer") {
       const value = argv[i++];
@@ -124,6 +184,7 @@ export function validateArgs(args: unknown): Validation {
 export function isWrite(args: readonly string[]): boolean {
   const command = args[0] ?? "";
   if (command === "apply" && args.includes("--dry-run")) return false;
+  if (isConsoleSettingsWrite(args)) return true;
   return (WRITE_COMMANDS as readonly string[]).includes(command);
 }
 

@@ -39,6 +39,8 @@ try {
     await page.goto(server.launchUrl);
     await page.getByRole("heading", { name: "agent-console" }).waitFor();
     assert(new URL(page.url()).search === "", `url still carries a query: ${page.url()}`);
+    // Installed is the default view since P2; everything below is the 配布 view.
+    await page.getByRole("button", { name: "配布", exact: true }).click();
     return page.url();
   });
 
@@ -223,6 +225,7 @@ try {
     await t.check("G17 a write pressed after the server stopped says nothing was written", async () => {
       const p2 = await b2.newPage({ viewport: { width: 1400, height: 992 } });
       await p2.goto(gone.launchUrl);
+      await p2.getByRole("button", { name: "配布", exact: true }).click();
       await p2.getByText("走査が完了しました").first().waitFor({ timeout: 15000 });
       await gone.stop();
       await p2.getByRole("switch").first().click();

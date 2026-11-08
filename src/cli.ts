@@ -24,6 +24,7 @@ import { runDoctor } from "./commands/doctor.js";
 import { runImport } from "./commands/import.js";
 import { runInventory } from "./commands/inventory.js";
 import { runPlan } from "./commands/plan.js";
+import { installedJson, projectsJson, runInstalled, runProjects } from "./commands/scope.js";
 import {
   applyJson,
   doctorJson,
@@ -233,6 +234,45 @@ export function buildProgram(io: CommandIo, setExit: (code: number) => void): Co
         return;
       }
       setExit(runDoctor({ io }));
+    });
+
+  /*
+   * ARCHITECTURE.md「単位とプロジェクト」. Both read the harnesses' files only.
+   * `projects` keeps a cache under ~/.agent-console/cache/, and
+   * `projects <action>` edits ~/.agent-console/projects.json — nothing else.
+   */
+  program
+    .command("projects")
+    .description("List the projects Claude Code and Copilot have recorded (read-only), or pin / hide / add one.")
+    .argument("[action]", "pin | unpin | hide | unhide | add | forget")
+    .argument("[target]", "a project id (add: a folder path)")
+    .option("--refresh", "read every Copilot session again instead of using the cache", false)
+    .option("--json", JSON_HELP, false)
+    .action((action: string | undefined, target: string | undefined, options: { refresh?: boolean; json?: boolean }) => {
+      const shared = {
+        refresh: options.refresh === true,
+        ...(action !== undefined ? { action } : {}),
+        ...(target !== undefined ? { target } : {}),
+      };
+      if (options.json === true) {
+        setExit(emit(projectsJson(shared), io));
+        return;
+      }
+      setExit(runProjects({ io, ...shared }));
+    });
+
+  program
+    .command("installed")
+    .description("Show what Claude Code and Copilot load, by unit (user / project / local), with the always-on cost (read-only).")
+    .option("--project <id>", "a project id from `ac projects`; adds its project and local units")
+    .option("--json", JSON_HELP, false)
+    .action((options: { project?: string; json?: boolean }) => {
+      const shared = options.project !== undefined ? { project: options.project } : {};
+      if (options.json === true) {
+        setExit(emit(installedJson(shared), io));
+        return;
+      }
+      setExit(runInstalled({ io, ...shared }));
     });
 
   return program;

@@ -107,3 +107,43 @@ describe("the API vocabulary (ported from the former desktop shell)", () => {
     expect(planArgsOf(["inventory"])).toBeNull();
   });
 });
+
+describe("the P2 commands (ARCHITECTURE.md「単位とプロジェクト」)", () => {
+  const id = "0123456789ab";
+
+  it("accepts projects with its actions and installed with a project id", () => {
+    expect(ok(["projects"])).toBe(true);
+    expect(ok(["projects", "--refresh"])).toBe(true);
+    for (const action of ["pin", "unpin", "hide", "unhide", "forget"]) expect(ok(["projects", action, id]), action).toBe(true);
+    expect(ok(["projects", "add", "C:\\work\\demo"])).toBe(true);
+    expect(ok(["projects", "add", "/home/demo/work"])).toBe(true);
+    expect(ok(["installed"])).toBe(true);
+    expect(ok(["installed", "--project", id])).toBe(true);
+  });
+
+  it("refuses ids, paths and flags outside the vocabulary (negative controls)", () => {
+    expect(ok(["projects", "pin"])).toBe(false);
+    expect(ok(["projects", "pin", "../x"])).toBe(false);
+    expect(ok(["projects", "pin", "0123456789AB"])).toBe(false);
+    expect(ok(["projects", "delete", id])).toBe(false);
+    expect(ok(["projects", "add", "relative\\dir"])).toBe(false);
+    expect(ok(["projects", "add", "C:\\a\\..\\b"])).toBe(false);
+    expect(ok(["projects", "add", "C:\\a\u0000b"])).toBe(false);
+    expect(ok(["projects", "add", `C:\\${"x".repeat(300)}`])).toBe(false);
+    expect(ok(["projects", "add", "-C:\\x"])).toBe(false);
+    expect(ok(["projects", "add", "//server/share"])).toBe(false);
+    expect(ok(["projects", "add", "\\\\server\\share"])).toBe(false);
+    expect(ok(["installed", "--project"])).toBe(false);
+    expect(ok(["installed", "--project", "C:\\work"])).toBe(false);
+    expect(ok(["plan", "--project", id])).toBe(false);
+    expect(ok(["inventory", "--refresh"])).toBe(false);
+  });
+
+  it("counts a settings change as a write, and the readings as reads", () => {
+    expect(isWrite(["projects", "pin", id])).toBe(true);
+    expect(isWrite(["projects", "add", "C:\\work"])).toBe(true);
+    expect(isWrite(["projects"])).toBe(false);
+    expect(isWrite(["projects", "--refresh"])).toBe(false);
+    expect(isWrite(["installed", "--project", id])).toBe(false);
+  });
+});

@@ -29,6 +29,7 @@
  * 「—」.
  */
 
+import { fixtureInstalled, fixtureProjectAction, fixtureProjects, newScopeMachine } from "./scope-fixtures.js";
 import { isExecutableAction } from "./contract.js";
 import type {
   Apply,
@@ -990,6 +991,7 @@ export function fixtureTransport(
   scenario: ScenarioId = "machine",
 ): EngineTransport & { scenario: ScenarioId } {
   const machine = newMachine(scenario);
+  const scopeMachine = newScopeMachine();
 
   return {
     scenario,
@@ -1015,6 +1017,18 @@ export function fixtureTransport(
         switch (command) {
           case "inventory":
             return ok(buildInventory(machine));
+
+          case "projects":
+            return ok(
+              args[1] !== undefined && !args[1].startsWith("-")
+                ? fixtureProjectAction(scopeMachine, args[1], args[2] ?? "")
+                : fixtureProjects(scopeMachine),
+            );
+
+          case "installed": {
+            const at = args.indexOf("--project");
+            return ok(fixtureInstalled(scopeMachine, at === -1 ? undefined : args[at + 1]));
+          }
 
           case "doctor": {
             const payload = buildDoctor(machine);
