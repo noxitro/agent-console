@@ -446,6 +446,10 @@ export function readInstalled(options: InstalledOptions = {}): InstalledJson {
   collectMcp(ctx);
   collectPlugins(ctx);
 
+  const unreadable = rec.list.filter((x) => x.status === "unreadable").length;
+  if (unreadable > 0) {
+    notes.push(`読めなかった場所が ${unreadable} か所ある。その中身は一覧に出ていない(「読んだ場所」の一覧で確かめる)。`);
+  }
   notes.push(
     "常時コストは静的な見積もり(字数)。トークンは推測の換算。MCP サーバーのツール定義と、ハーネス自身のシステムプロンプトは数えていない。",
     "Copilot の組み込みプラグイン(computer-use など)は状態ファイルに無いので表示していない。",
@@ -487,15 +491,17 @@ function totals(rows: InstalledRow[], scopes: ScopeKind[]): ScopeTotal[] {
         const reaches = row.reach.filter((r) => r.harness === harness);
         if (reaches.length === 0) continue;
         t.rows++;
-        for (const r of reaches) {
-          if (r.state === "enabled") {
-            if (r.cost === undefined) t.unmeasured++;
-            else {
-              t.chars += r.cost.chars;
-              t.tokens += r.cost.tokens;
-            }
-          } else if (r.state === "conditional") t.conditional++;
-        }
+        // One thing on disk reached through two paths (a link in ~/.copilot/skills
+        // to ~/.agents/skills) is loaded once, so it is counted once.
+        const enabled = reaches.filter((r) => r.state === "enabled");
+        if (enabled.length > 0) {
+          const counted = enabled.find((r) => r.cost !== undefined);
+          if (counted === undefined) t.unmeasured++;
+          else {
+            t.chars += counted.cost!.chars;
+            t.tokens += counted.cost!.tokens;
+          }
+        } else if (reaches.some((r) => r.state === "conditional")) t.conditional++;
       }
       out.push(t);
     }
@@ -509,8 +515,9 @@ function instructionRow(
   ctx: Context,
   scope: ScopeKind,
   file: string,
-  reach: (text: string, total: string) => InstalledReach[],
+  reach: (text: string, total: string, imports: { path: string; text: string }[]) => InstalledReach[],
   importsFor: "claude" | "none" = "claude",
+  unreadable?: string,
 ): void {
   let text: string | null;
   try {
@@ -538,11 +545,14 @@ function instructionRow(
     scope,
     origin: originOf(file),
     ...withReal(file),
-    reach: reach(text, total),
+    reach: reach(text, total, imports),
   };
+  if (unreadable !== undefined) row.unreadable = unreadable;
   if (imports.length > 0) row.imports = imports.map((i) => ({ path: i.path, chars: costOf(i.text).chars }));
   ctx.rows.put(row);
 }
+
+const BROKEN_FRONTMATTER = "frontmatter が読めないため、常に読まれるか条件付きかを決められない(合計に含めない)";
 
 function collectInstructions(ctx: Context): void {
   const claudeBasis = "本文 + @import 先の字数(公式 memory)";
@@ -555,8 +565,8 @@ function collectInstructions(ctx: Context): void {
       { harness: "claude", state: "unconfirmed", via: f, certainty: "unconfirmed", cost: costOf(total), note: "user 単位の rules は公式文書で確かめていない" },
     ]);
   }
-  instructionRow(ctx, "user", copilotUserInstructionsPath(), (_t, total) => [
-    { harness: "copilot", state: "enabled", via: copilotUserInstructionsPath(), certainty: "official+measured", cost: costOf(copilotInstructionText(total)), costBasis: "<custom_instruction> 1 件分(実測)" },
+  instructionRow(ctx, "user", copilotUserInstructionsPath(), (t, _total, imports) => [
+    { harness: "copilot", state: "enabled", via: copilotUserInstructionsPath(), certainty: "official+measured", cost: costOf(copilotInstructionText(t, imports)), costBasis: "<custom_instruction> 1 件分。@ 参照の先も中に入る(実測)" },
   ]);
   for (const f of walkFiles(copilotUserInstructionsDir(), ".instructions.md", ctx.rec)) {
     copilotPathInstruction(ctx, "user", f, copilotUserInstructionsDir());
@@ -575,13 +585,13 @@ function collectInstructions(ctx: Context): void {
     }
   }
 
-  const copilotRoot = (f: string) => (_t: string, total: string): InstalledReach =>
-    ({ harness: "copilot", state: "enabled", via: f, certainty: "official+measured", cost: costOf(copilotInstructionText(total)), costBasis: "<custom_instruction> 1 件分(実測)" });
+  const copilotRoot = (f: string) => (t: string, _total: string, imports: { path: string; text: string }[] = []): InstalledReach =>
+    ({ harness: "copilot", state: "enabled", via: f, certainty: "official+measured", cost: costOf(copilotInstructionText(t, imports)), costBasis: "<custom_instruction> 1 件分。@ 参照の先も中に入る(実測)" });
 
   // project: CLAUDE.md (both harnesses read it)
-  instructionRow(ctx, "project", pp.claudeMd, (t, total) => [
+  instructionRow(ctx, "project", pp.claudeMd, (t, total, imports) => [
     { harness: "claude", state: "enabled", via: pp.claudeMd, certainty: "official", cost: costOf(total), costBasis: claudeBasis },
-    copilotRoot(pp.claudeMd)(t, total),
+    copilotRoot(pp.claudeMd)(t, total, imports),
   ]);
   instructionRow(ctx, "project", pp.dotClaudeMd, (_t, total) => [
     { harness: "claude", state: "enabled", via: pp.dotClaudeMd, certainty: "official", cost: costOf(total), costBasis: claudeBasis },
@@ -593,33 +603,43 @@ function collectInstructions(ctx: Context): void {
       note: "公式文書は読むとするが、1.0.107 の実測では読まれなかった",
     },
   ]);
-  instructionRow(ctx, "project", pp.agentsMd, (t, total) => {
+  instructionRow(ctx, "project", pp.agentsMd, (t, total, imports) => {
     const imported = claudeImports.has(keyOfPath(pp.agentsMd));
     const claude: InstalledReach = imported
       ? { harness: "claude", state: "via-import", via: pp.agentsMd, certainty: "official", cost: costOf(total), note: "CLAUDE.md の @import として読まれる(字数はそちらに含めた)" }
       : anyClaudeMd
         ? { harness: "claude", state: "not-loaded", via: pp.agentsMd, certainty: "official", note: "既定の設定では、CLAUDE.md・.claude/CLAUDE.md・CLAUDE.local.md があると AGENTS.md を読まない" }
         : { harness: "claude", state: "enabled", via: pp.agentsMd, certainty: "official", cost: costOf(total), costBasis: claudeBasis, note: "Claude Code 2.1.277 以降、CLAUDE.md が無いときに読む" };
-    return [claude, copilotRoot(pp.agentsMd)(t, total)];
+    return [claude, copilotRoot(pp.agentsMd)(t, total, imports)];
   });
-  instructionRow(ctx, "project", pp.geminiMd, (t) => [copilotRoot(pp.geminiMd)(t, t)], "none");
-  instructionRow(ctx, "project", pp.copilotInstructions, (t, total) => [copilotRoot(pp.copilotInstructions)(t, total)]);
+  instructionRow(ctx, "project", pp.geminiMd, (t) => [copilotRoot(pp.geminiMd)(t, t, [])], "none");
+  instructionRow(ctx, "project", pp.copilotInstructions, (t, total, imports) => [copilotRoot(pp.copilotInstructions)(t, total, imports)]);
   for (const f of walkFiles(pp.githubInstructionsDir, ".instructions.md", ctx.rec)) {
     copilotPathInstruction(ctx, "project", f, ctx.root);
   }
   for (const f of walkFiles(pp.claudeRulesDir, ".md", ctx.rec)) {
     let conditional = false;
+    let broken: string | undefined;
     try {
       const md = readMarkdown(f, ctx.rec);
       conditional = md !== null && md.data["paths"] !== undefined;
-    } catch {
-      /* the row shows it as unreadable */
+    } catch (err) {
+      broken = (err as Error).message;
     }
-    instructionRow(ctx, "project", f, (_t, total) => [
-      conditional
-        ? { harness: "claude", state: "conditional", via: f, certainty: "official", cost: costOf(total), note: "paths に当たるファイルを扱うときだけ読む" }
-        : { harness: "claude", state: "enabled", via: f, certainty: "official", cost: costOf(total), costBasis: claudeBasis },
-    ]);
+    instructionRow(
+      ctx,
+      "project",
+      f,
+      (_t, total) => [
+        broken !== undefined
+          ? { harness: "claude", state: "unknown", via: f, certainty: "official", cost: costOf(total), note: BROKEN_FRONTMATTER }
+          : conditional
+            ? { harness: "claude", state: "conditional", via: f, certainty: "official", cost: costOf(total), note: "paths に当たるファイルを扱うときだけ読む" }
+            : { harness: "claude", state: "enabled", via: f, certainty: "official", cost: costOf(total), costBasis: claudeBasis },
+      ],
+      "claude",
+      broken,
+    );
   }
   // local
   instructionRow(ctx, "local", pp.claudeLocalMd, (_t, total) => [
@@ -632,14 +652,15 @@ function collectInstructions(ctx: Context): void {
 function copilotPathInstruction(ctx: Context, scope: ScopeKind, file: string, relTo: string): void {
   let pattern: string | undefined;
   let description: string | undefined;
+  let broken: string | undefined;
   try {
     const md = readMarkdown(file, ctx.rec);
     if (md === null) return;
     const a = md.data["applyTo"];
     pattern = typeof a === "string" ? a : Array.isArray(a) ? a.join(",") : undefined;
     description = str(md.data["description"]);
-  } catch {
-    /* the row shows it as unreadable */
+  } catch (err) {
+    broken = (err as Error).message;
   }
   const always = pattern === undefined || pattern.trim() === "" || pattern.trim() === "**";
   instructionRow(
@@ -647,7 +668,9 @@ function copilotPathInstruction(ctx: Context, scope: ScopeKind, file: string, re
     scope,
     file,
     (t) => [
-      always
+      broken !== undefined
+        ? { harness: "copilot", state: "unknown", via: file, certainty: "measured", cost: costOf(t + "\n"), note: BROKEN_FRONTMATTER }
+        : always
         ? { harness: "copilot", state: "enabled", via: file, certainty: "measured", cost: costOf(t + "\n"), costBasis: "本文をそのまま(実測)", note: pattern === undefined ? "applyTo が無いものは常に読まれた(実測)" : "applyTo: ** は常に読まれる" }
         : {
             harness: "copilot",
@@ -660,6 +683,7 @@ function copilotPathInstruction(ctx: Context, scope: ScopeKind, file: string, re
           },
     ],
     "none",
+    broken,
   );
 }
 

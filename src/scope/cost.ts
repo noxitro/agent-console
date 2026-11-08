@@ -63,9 +63,15 @@ export function copilotAgentText(name: string, description: string): string {
   return `- **${name}**: ${description}\n\n`;
 }
 
-/** Copilot CLI: an instruction file that is always included (measured). */
-export function copilotInstructionText(body: string): string {
-  return `<custom_instruction>\n${body}\n</custom_instruction>\n\n`;
+/**
+ * Copilot CLI: an instruction file that is always included, with the files its
+ * `@` references pull in appended inside it (both shapes measured in 1.0.107).
+ */
+export function copilotInstructionText(body: string, imports: readonly { path: string; text: string }[] = []): string {
+  const imported = imports
+    .map((i) => `<imported_custom_instruction source="${i.path}">\n${i.text}</imported_custom_instruction>\n\n`)
+    .join("");
+  return `<custom_instruction>\n${body}\n${imported}</custom_instruction>\n\n`;
 }
 
 /** Copilot CLI: the table row an `applyTo` file that did not match gets instead of its body (measured). */

@@ -131,6 +131,8 @@ describe("the P2 commands (ARCHITECTURE.md「単位とプロジェクト」)", (
     expect(ok(["projects", "add", "C:\\a\u0000b"])).toBe(false);
     expect(ok(["projects", "add", `C:\\${"x".repeat(300)}`])).toBe(false);
     expect(ok(["projects", "add", "-C:\\x"])).toBe(false);
+    expect(ok(["projects", "add", "//server/share"])).toBe(false);
+    expect(ok(["projects", "add", "\\\\server\\share"])).toBe(false);
     expect(ok(["installed", "--project"])).toBe(false);
     expect(ok(["installed", "--project", "C:\\work"])).toBe(false);
     expect(ok(["plan", "--project", id])).toBe(false);

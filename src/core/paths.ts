@@ -404,7 +404,7 @@ export function tempDirs(): string[] {
 export function systemRootDir(): string | null {
   if (envOverride("HOME") !== undefined) return null;
   if (process.platform !== "win32") return null;
-  return path.resolve(process.env["SystemRoot"] ?? "C:\Windows");
+  return path.resolve(process.env["SystemRoot"] ?? "C:\\Windows");
 }
 
 /** `~/.claude/settings.json` (user scope). Only plugin and skill keys are read. */

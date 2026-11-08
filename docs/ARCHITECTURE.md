@@ -90,8 +90,8 @@ P2 で足した層(`src/scope/`)。Claude Code と GitHub Copilot(CLI とアプ�
 毎セッションの最初からコンテキストに載る文字数の静的な見積もり(`src/scope/cost.ts`)。形を実測できたものはその形で、できていないものは公式の記述どおりに数える。
 
 - Claude: skill は名前 + description + when_to_use、agent と command は名前 + description、指示ファイルは本文 + @import 先(4 段まで)。`skillOverrides: off` と `disable-model-invocation` は 0、`name-only` は名前だけ(内訳は推測)
-- Copilot: skill は `<available_skills>` の 1 件分、agent は task ツールの説明の 1 行、常に読まれる指示ファイルは `<custom_instruction>` の 1 件分、`applyTo` が当たらない `*.instructions.md` は一覧表の 1 行(どれも 1.0.107 の実測の形)
-- 合計に入れるのは、状態が「有効」の届き方だけ。条件付きは表示だけにする。MCP のツール定義とハーネス自身のシステムプロンプトは数えない(「未計測」として件数を出す)
+- Copilot: skill は `<available_skills>` の 1 件分、agent は task ツールの説明の 1 行、常に読まれる指示ファイルは `<custom_instruction>` の 1 件分(copilot-instructions.md・AGENTS.md・CLAUDE.md の `@` 参照の先は、その中に `<imported_custom_instruction source="絶対パス">` として入る)、`applyTo` が当たらない `*.instructions.md` は一覧表の 1 行(どれも 1.0.107 の実測の形)
+- 合計に入れるのは、状態が「有効」の届き方だけ。同じ実体に 2 つのパスから届く場合(`~/.copilot/skills` から `~/.agents/skills` へのリンクなど)は、ハーネスごとに 1 回だけ数える。frontmatter が読めず、常時か条件付きかを決められないファイルは「不明」にして数えない。条件付きは表示だけにする。MCP のツール定義とハーネス自身のシステムプロンプトは数えない(「未計測」として件数を出す)
 - 字数は Unicode のコードポイント数。トークンは推測の換算(英数 3.2 字 / トークン、それ以外 0.87 トークン / 字)で、画面にも「推測」と書く
 
 ### スパイクの判定
@@ -100,7 +100,7 @@ P2 で足した層(`src/scope/`)。Claude Code と GitHub Copilot(CLI とアプ�
 
 | ID | 判定 | 確度 | 出典 |
 |---|---|---|---|
-| S11 | **合格(1 行を除く)。** 届く: `$COPILOT_HOME/copilot-instructions.md`、`$COPILOT_HOME/instructions/*.instructions.md`、`.github/copilot-instructions.md`、ルートと cwd の `AGENTS.md`・`CLAUDE.md`・`GEMINI.md`、`applyTo` が無いか `**` の `*.instructions.md`(本文)。`applyTo` が他のパターンのものは一覧表の 1 行だけ。届かない: `CLAUDE.local.md`。優先順位は無く、すべて結合される(順は個人 → `.github` → AGENTS → CLAUDE → GEMINI → instructions)。**`.claude/CLAUDE.md` は公式文書と実測が食い違うので「未確認」**とした | 公式・実測 | docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions、docs.github.com/en/copilot/reference/custom-instructions-support |
+| S11 | **合格(1 行を除く)。** 届く: `$COPILOT_HOME/copilot-instructions.md`、`$COPILOT_HOME/instructions/*.instructions.md`、`.github/copilot-instructions.md`、ルートと cwd の `AGENTS.md`・`CLAUDE.md`・`GEMINI.md`、`applyTo` が無いか `**` の `*.instructions.md`(本文)。`applyTo` が他のパターンのものは一覧表の 1 行だけ。届かない: `CLAUDE.local.md`。`CLAUDE.md` などの `@` 参照は展開され、import 先が単独でも読まれるファイル(CLAUDE.md が import する AGENTS.md など)は 2 回載る。優先順位は無く、すべて結合される(順は個人 → `.github` → AGENTS → CLAUDE → GEMINI → instructions)。**`.claude/CLAUDE.md` は公式文書と実測が食い違うので「未確認」**とした | 公式・実測 | docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions、docs.github.com/en/copilot/reference/custom-instructions-support |
 | S12 | **合格。** MCP: `.mcp.json`、無ければ `.github/mcp.json`(同じリポジトリに両方あると `.github/mcp.json` は読まれない)。`.vscode/mcp.json` とリポジトリ内の `.copilot/mcp-config.json` は読まない。信頼済みのフォルダだけ。プラグイン: リポジトリの `.github/copilot/settings.json` と `settings.local.json` が `enabledPlugins` と `extraKnownMarketplaces` を持てる(宣言すると自動で導入される)。導入先は個人の `~/.copilot/installed-plugins/` だけ | 公式・実測 | docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers、docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference、同 cli-plugin-reference、`copilot help config`、`copilot mcp --help` |
 | S16 | **合格。** 実環境で、キャッシュ無し 0.6〜1.5 秒、キャッシュあり 0.1〜0.2 秒(CLI の起動を含めて 0.55 秒 / 0.23 秒) | 実測 | `e2e/l3-scope.mjs` |
 

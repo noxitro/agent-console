@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { main } from "../cli.js";
 import { bufferIo } from "../commands/context.js";
-import { costOf, copilotSkillText } from "./cost.js";
+import { copilotInstructionText, copilotSkillText, costOf } from "./cost.js";
 import { claudeTranscriptName, discoverProjects, projectId, readProjectSettings } from "./discover.js";
 import { findRepo } from "./gitroot.js";
 import { readInstalled, type InstalledRow } from "./installed.js";
@@ -362,5 +362,73 @@ describe("static guards", () => {
       const text = fs.readFileSync(path.join(dir, f), "utf8");
       expect(text, f).not.toMatch(/copilotSelfManagedConfigPath|child_process/);
     }
+  });
+});
+
+describe("review fixes (L2)", () => {
+  it("never quotes ~/.claude.json's text in a parse error", () => {
+    write(path.join(home, ".claude.json"), '{"primaryApiKey": sk-fake-api-key-UNQUOTED, "projects": {}}');
+    const r = discoverProjects();
+    const s = r.sources.find((x) => x.label === "claude.json#projects")!;
+    expect(s.status).toBe("unreadable");
+    expect(JSON.stringify(r)).not.toContain("sk-fake");
+    expect(s.detail).toMatch(/^JSON の構文エラー/);
+  });
+
+  it("does not count an instruction file whose frontmatter is broken, and marks the row", () => {
+    const { repoA } = seed();
+    write(path.join(repoA, ".github", "instructions", "bad.instructions.md"), '---\napplyTo: "**/*.ts\nx: [\n---\n' + "y".repeat(500) + "\n");
+    write(path.join(repoA, ".claude", "rules", "bad.md"), "---\npaths: [src/\n---\nrule body\n");
+    const r = readInstalled({ root: repoA });
+    for (const name of ["bad.instructions.md", "bad.md"]) {
+      const row = r.rows.find((x) => x.name === name)!;
+      expect(row.unreadable, name).toBeDefined();
+      expect(row.reach[0]!.state, name).toBe("unknown");
+    }
+    expect(r.totals.find((t) => t.scope === "project" && t.harness === "copilot")!.chars).toBe(0);
+    expect(r.totals.find((t) => t.scope === "project" && t.harness === "claude")!.chars).toBe(0);
+  });
+
+  it("counts a skill reached through two paths by the same harness once", () => {
+    seed();
+    skill(path.join(home, ".agents", "skills"), "twice", "Linked into ~/.copilot/skills too.");
+    fs.mkdirSync(path.join(home, ".copilot", "skills"), { recursive: true });
+    fs.symlinkSync(path.join(home, ".agents", "skills", "twice"), path.join(home, ".copilot", "skills", "twice"), "junction");
+    const r = readInstalled();
+    const row = r.rows.find((x) => x.name === "twice")!;
+    expect(row.reach.filter((x) => x.harness === "copilot")).toHaveLength(2);
+    const one = row.reach.find((x) => x.harness === "copilot")!.cost!.chars;
+    expect(r.totals.find((t) => t.harness === "copilot")!.chars).toBe(one);
+  });
+
+  it("reads a session again once a file that named no folder has been written", () => {
+    seed();
+    const events = path.join(home, ".copilot", "session-state", "late", "events.jsonl");
+    write(events, "");
+    fs.utimesSync(events, new Date("2030-01-01T00:00:00Z"), new Date("2030-01-01T00:00:00Z"));
+    discoverProjects();
+    const repo = path.join(work, "late-repo");
+    fs.mkdirSync(path.join(repo, ".git"), { recursive: true });
+    write(events, `${JSON.stringify({ type: "session.start", data: { context: { cwd: repo } } })}\n`);
+    expect(discoverProjects().projects.some((p) => p.root === repo)).toBe(true);
+  });
+
+  it("counts Copilot's imports in the measured shape (the imported file is also loaded on its own)", () => {
+    const { repoA } = seed();
+    seedAssets(repoA);
+    const r = readInstalled({ root: repoA });
+    const claudeMd = r.rows.find((x) => x.kind === "instructions" && x.scope === "project" && x.path === path.join(repoA, "CLAUDE.md"))!;
+    const expected = costOf(
+      copilotInstructionText("Project rules.\n@AGENTS.md\n", [{ path: path.join(repoA, "AGENTS.md"), text: "Agents rules.\n" }]),
+    );
+    expect(claudeMd.reach.find((x) => x.harness === "copilot")!.cost).toEqual(expected);
+  });
+
+  it("refuses a network path and an excluded folder for `projects add`", () => {
+    seed();
+    expect(main(["node", "ac", "projects", "add", "\\\\server\\share"], { io: bufferIo() })).toBe(2);
+    expect(main(["node", "ac", "projects", "add", "//server/share"], { io: bufferIo() })).toBe(2);
+    expect(main(["node", "ac", "projects", "add", home], { io: bufferIo() })).toBe(2);
+    expect(fs.existsSync(path.join(home, ".agent-console", "projects.json"))).toBe(false);
   });
 });

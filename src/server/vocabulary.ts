@@ -68,6 +68,8 @@ export function isFolderPath(value: string): boolean {
   if (value.length === 0 || value.length > MAX_FOLDER_PATH) return false;
   if (value.startsWith("-") || /[\u0000-\u001f"<>|?*]/.test(value)) return false;
   if (!/^(?:[A-Za-z]:[\\/]|\/)/.test(value)) return false;
+  // `//host/share` and `\\host\share` are network shares (UNC), not local folders.
+  if (/^[\\/]{2}/.test(value)) return false;
   return !value.split(/[\\/]/).includes("..");
 }
 

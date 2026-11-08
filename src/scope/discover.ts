@@ -200,7 +200,11 @@ export function updateProjectSettings(action: ProjectAction, target: string): st
   let root: string;
   if (action === "add") {
     if (!path.isAbsolute(target)) throw new AmError(`Not an absolute path: ${target}`);
+    // A network share would make every later read reach out over SMB.
+    if (/^[\\/]{2}/.test(target)) throw new AmError(`A network path is not accepted: ${target}`);
     root = normalizeRoot(target);
+    const excluded = exclusionReason(root);
+    if (excluded !== null) throw new AmError(`This folder is never offered as a project (${excluded}): ${root}`);
     let st: fs.Stats;
     try {
       st = fs.statSync(root);
@@ -272,6 +276,14 @@ function safeSettings(): ProjectSettings {
 interface CopilotSessionRecord {
   cwd?: string;
   gitRoot?: string;
+  /** Only on a record that named no folder: the file's mtime when it was read. */
+  mtimeMs?: number;
+}
+
+/** The position of a JSON syntax error, without the quoted text around it. */
+export function jsonErrorDetail(err: unknown): string {
+  const m = /position (\d+)/.exec((err as Error)?.message ?? "");
+  return m === null ? "JSON の構文エラー" : `JSON の構文エラー(位置 ${m[1]})`;
 }
 
 interface DiscoveryCache {
@@ -348,11 +360,13 @@ function readClaudeRecords(statuses: SourceStatus[]): Candidate[] {
       }
     }
   } catch (err) {
+    // Never the parser's message: V8 quotes the text around the error, and in
+    // this file that text can be an API key or an account field.
     statuses.push({
       label: "claude.json#projects",
       path: file,
       status: "unreadable",
-      detail: `JSON: ${(err as Error).message}`,
+      detail: jsonErrorDetail(err),
     });
     return [];
   }
@@ -503,9 +517,13 @@ function readCopilotRecords(
       }
     }
     let rec = refresh ? undefined : cache.copilot[id];
+    // A record that named no folder may have been read while the session was
+    // still being written: read it again once its file has changed.
+    if (rec !== undefined && rec.cwd === undefined && rec.gitRoot === undefined && rec.mtimeMs !== mtime) rec = undefined;
     if (rec === undefined) {
       rec = hasEvents ? parseSessionStart(readFirstLine(events)) : {};
       if (rec.cwd === undefined) rec = { ...parseWorkspaceYaml(workspace), ...rec };
+      if (rec.cwd === undefined && rec.gitRoot === undefined && mtime !== undefined) rec.mtimeMs = mtime;
       result.fresh++;
       result.changed = true;
     } else {
