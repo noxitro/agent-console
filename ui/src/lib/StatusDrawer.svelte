@@ -15,6 +15,7 @@
   const {
     which,
     doctor,
+    surveyStatus,
     plan,
     applied,
     unconfirmed,
@@ -22,6 +23,7 @@
   }: {
     which: "doctor" | "plan";
     doctor: Doctor | null;
+    surveyStatus: string;
     plan: Plan | null;
     applied: Apply | null;
     unconfirmed: AppliedAction[];
@@ -109,7 +111,22 @@
     aria-label="一覧(スクロール)"
   >
     {#if which === "doctor"}
-      {#if findings.length === 0}
+      <!--
+        No reading is not a clean reading. `doctor` is null before the first
+        survey, during it, and after one that failed (the session keeps nothing
+        from a failed read), and all three used to say 「所見はありません。」.
+      -->
+      {#if doctor === null}
+        <p class="empty">
+          {#if surveyStatus === "running"}
+            DOCTOR 未取得 — 走査中です。終わると所見が出ます。
+          {:else if surveyStatus === "failed"}
+            DOCTOR 未取得 — 走査が失敗したため、所見はありません。画面上部の障害の内容を確認し、「再走査」で取り直してください。
+          {:else}
+            DOCTOR 未取得 — 走査が終わると所見が出ます。
+          {/if}
+        </p>
+      {:else if findings.length === 0}
         <p class="empty">所見はありません。</p>
       {:else}
         <ul class="list">

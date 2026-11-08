@@ -38,7 +38,7 @@
 
 <dialog
   bind:this={dialog}
-  class="confirm"
+  class="dialog confirm"
   aria-labelledby="remove-title"
   aria-busy={busy}
   oncancel={(event) => {
@@ -85,20 +85,9 @@
 </dialog>
 
 <style>
+  /* The sheet, its shadow and its backdrop are shared with ConfirmApply (app.css: `.dialog`). */
   .confirm {
     width: min(34rem, calc(100vw - 3rem));
-    padding: 0;
-    border: 1.5px solid var(--ink);
-    border-radius: 2px;
-    background: var(--paper);
-    color: var(--ink);
-    box-shadow:
-      0 2px 4px rgba(26, 43, 60, 0.12),
-      0 28px 56px -28px rgba(26, 43, 60, 0.55);
-  }
-
-  .confirm::backdrop {
-    background: rgba(26, 43, 60, 0.42);
   }
 
   form {

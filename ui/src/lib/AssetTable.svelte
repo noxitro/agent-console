@@ -367,7 +367,9 @@
       </div>
     </div>
 
-    <p class="count num" aria-live="polite">{countLabel}</p>
+    <!-- Not a live region: App's single status region reads the count out
+         when the owner changes the tab, the search or a filter. -->
+    <p class="count num">{countLabel}</p>
   </div>
 
   <!-- The scroller is no longer a tab stop of its own: the grid inside it is
@@ -649,6 +651,20 @@
     outline-offset: -2px;
   }
 
+  /* A contrast theme repaints the ink fill to Canvas (app.css: Forced colours). */
+  @media (forced-colors: active) {
+    .chip[aria-checked="true"] {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+    }
+
+    :global(.app--frozen) .chip[aria-checked="true"] {
+      background: GrayText;
+      color: Canvas;
+    }
+  }
+
   /* Target narrowing ---------------------------------------------------
    *
    * The group and its annotation travel together: at narrow widths the toolbar
@@ -752,6 +768,24 @@
     box-shadow: inset 2px 0 0 var(--ink);
   }
 
+  /* A contrast theme drops box-shadow and repaints the wash, which left the
+     selected row unmarked. The bar is redrawn as a cell edge in Highlight; only
+     the edge opts out of the theme, so the row's text keeps the theme's colours. */
+  @media (forced-colors: active) {
+    tbody tr.is-selected > :first-child {
+      position: relative;
+    }
+
+    tbody tr.is-selected > :first-child::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      forced-color-adjust: none;
+      background: Highlight;
+    }
+  }
+
   tbody tr.is-disabled .row-name {
     color: var(--ink-2);
     text-decoration: line-through;
@@ -793,51 +827,16 @@
 
   /* Switch ------------------------------------------------------------ */
 
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--gap-2);
-    white-space: nowrap;
-    min-height: 1.75rem;
-    padding: 0 var(--gap-2);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper);
-    font-size: var(--t-small);
-    cursor: pointer;
-  }
-
-  .toggle__dot {
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    border: 1px solid var(--ink-2);
-    background: transparent;
-  }
-
-  .toggle[aria-checked="true"] .toggle__dot {
-    background: var(--pass);
-    border-color: var(--pass);
-  }
-
-  .toggle:focus-visible,
+  /* The switch (`.toggle`) is shared with the detail pane and lives in app.css;
+     the delete button keeps the same focus ring and busy look beside it. */
   .icon-btn:focus-visible {
     outline: 2px solid var(--ink);
     outline-offset: 1px;
   }
 
-  /* Busy, not disabled (app.css) — the row controls need the same look for the
-     same reason: pressing one is what makes `busy` true, and during an asset
-     command nothing else on screen changes until the follow-up survey starts. */
-  .toggle[aria-busy="true"],
   .icon-btn[aria-busy="true"] {
     color: var(--ink-3);
     border-color: var(--rule);
-  }
-
-  .toggle[aria-busy="true"] .toggle__dot,
-  .toggle[aria-busy="true"][aria-checked="true"] .toggle__dot {
-    background: transparent;
-    border-color: var(--ink-3);
   }
 
   .icon-btn {
@@ -872,16 +871,19 @@
     justify-items: center;
   }
 
-  /* --ink-2, not --ink-3: at this size the type is already at the edge of
-     legibility, and --ink-3 on the header ground measures 3.27:1 — below the
-     4.5:1 that body-sized and smaller text needs. --ink-2 is 5.29:1. The face
-     is mono because these are target ids issued by the tools (DESIGN: 等幅は
-     識別子ルール). */
+  /* --t-micro, the floor of the type scale. It was 9px, below that floor, to
+     keep the column narrow; the ids are short enough that the column only
+     widens a little, and a label too small to read labels nothing. --ink-2,
+     not --ink-3: --ink-3 on the header ground measures 3.27:1, below the 4.5:1
+     that text this size needs; --ink-2 is 5.29:1. The face is mono because
+     these are target ids issued by the tools (DESIGN: 等幅は識別子ルール). */
   .legend {
     margin-top: 2px;
     font-family: var(--mono);
-    font-size: 0.5625rem;
-    letter-spacing: 0;
+    font-size: var(--t-micro);
+    /* A hair tighter, so the longest id (copilot-cli) still fits the column
+       at the widths where it used to fit at 9px. */
+    letter-spacing: -0.02em;
     text-transform: none;
     color: var(--ink-2);
   }
@@ -893,46 +895,8 @@
     white-space: nowrap;
   }
 
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.35rem;
-    height: 1.35rem;
-    padding: 0 var(--gap-1);
-    border: 1px solid var(--rule-strong);
-    font-size: var(--t-micro);
-    font-family: var(--mono);
-    color: var(--ink-2);
-    background: var(--paper);
-  }
-
-  .badge--match {
-    color: var(--pass-text);
-    border-color: var(--pass);
-    background: var(--pass-wash);
-  }
-
-  .badge--pending {
-    color: var(--fault-text);
-    border-color: var(--fault);
-    background: var(--fault-wash);
-  }
-
-  /* 破線 = 実在しない・未確定 (DESIGN: Shapes). 非対応 is a refusal, 未取得 is a
-     measurement nobody took; both are "no state here", so both are dashed. */
-  .badge--unsupported,
-  .badge--unknown {
-    color: var(--ink-2);
-    border-style: dashed;
-  }
-
-  /* Delivered, and switched off on the far side: a solid, quiet fact — not a
-     fault, and not the absence the dashed badges mean. */
-  .badge--off {
-    color: var(--ink-2);
-    background: var(--paper-inset);
-  }
+  /* The badge itself (`.badge`, `.badge--*`) is shared with the detail pane and
+     lives in app.css. */
 
   .empty {
     padding: var(--gap-5);
