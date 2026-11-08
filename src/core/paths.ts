@@ -364,3 +364,143 @@ export function relativeToHome(target: string, root: string = homeDir()): string
   if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join("/");
 }
+
+/* ------------------------------------------------------------------ */
+/* Scopes and projects (ARCHITECTURE.md「単位とプロジェクト」, P2)      */
+/* ------------------------------------------------------------------ */
+
+/** `~/.agent-console/projects.json` — pinned / hidden / manually added projects (this PC only). */
+export function projectsSettingsPath(): string {
+  return path.join(consoleRoot(), "projects.json");
+}
+
+/** `~/.agent-console/cache/` — rebuildable caches. Deleting it loses nothing. */
+export function consoleCacheDir(): string {
+  return path.join(consoleRoot(), "cache");
+}
+
+/** `~/.agent-console/cache/projects.json` — what discovery read from the harnesses' records. */
+export function projectsCachePath(): string {
+  return path.join(consoleCacheDir(), "projects.json");
+}
+
+/**
+ * Temporary directories, which project discovery never offers as a project.
+ *
+ * Under `AC_HOME` the real `%TEMP%` is ignored for the same reason as
+ * {@link appDataDir}: a test's fake HOME lives *inside* the real temp
+ * directory, and excluding it would exclude every fixture project.
+ */
+export function tempDirs(): string[] {
+  const home = envOverride("HOME");
+  if (home !== undefined) return [path.join(path.resolve(home), "AppData", "Local", "Temp")];
+  const dirs = [os.tmpdir()];
+  const local = process.env["LOCALAPPDATA"];
+  if (local !== undefined && local.trim() !== "") dirs.push(path.join(local, "Temp"));
+  return [...new Set(dirs.map((d) => path.resolve(d)))];
+}
+
+/** `C:\Windows` (or `%SystemRoot%`); `null` off Windows or under `AC_HOME`. */
+export function systemRootDir(): string | null {
+  if (envOverride("HOME") !== undefined) return null;
+  if (process.platform !== "win32") return null;
+  return path.resolve(process.env["SystemRoot"] ?? "C:\Windows");
+}
+
+/** `~/.claude/settings.json` (user scope). Only plugin and skill keys are read. */
+export function claudeSettingsPath(): string {
+  return path.join(claudeHome(), "settings.json");
+}
+
+/** `~/.claude/CLAUDE.md` — Claude's user instructions. */
+export function claudeUserInstructionsPath(): string {
+  return path.join(claudeHome(), "CLAUDE.md");
+}
+
+/** `~/.claude/rules/` — user-level rule files. */
+export function claudeUserRulesDir(): string {
+  return path.join(claudeHome(), "rules");
+}
+
+/** `~/.claude/commands/` — Claude's own slash commands (read for display only). */
+export function claudeCommandsDir(): string {
+  return path.join(claudeHome(), "commands");
+}
+
+/** `~/.claude/skills/synced/` — skills synced from claude.ai, one bucket per account. */
+export function claudeSyncedSkillsDir(): string {
+  return path.join(claudeSkillsDir(), "synced");
+}
+
+/** `~/.claude/projects/` — one transcript directory per project (its name encodes the path). */
+export function claudeTranscriptsDir(): string {
+  return path.join(claudeHome(), "projects");
+}
+
+/** `~/.claude/plugins/installed_plugins.json` */
+export function claudeInstalledPluginsPath(): string {
+  return path.join(claudeHome(), "plugins", "installed_plugins.json");
+}
+
+/** `~/.copilot/settings.json` (user scope). Only plugin, skill and MCP keys are read. */
+export function copilotSettingsPath(): string {
+  return path.join(copilotHome(), "settings.json");
+}
+
+/** `~/.copilot/copilot-instructions.md` — Copilot's user instructions. */
+export function copilotUserInstructionsPath(): string {
+  return path.join(copilotHome(), "copilot-instructions.md");
+}
+
+/** `~/.copilot/instructions/` — user-level `*.instructions.md`. */
+export function copilotUserInstructionsDir(): string {
+  return path.join(copilotHome(), "instructions");
+}
+
+/** `~/.copilot/installed-plugins/` — `<marketplace>/<plugin>/` and `_direct/<id>/`. */
+export function copilotInstalledPluginsDir(): string {
+  return path.join(copilotHome(), "installed-plugins");
+}
+
+/** `~/.copilot/session-state/` — one directory per session (`events.jsonl`, `workspace.yaml`). */
+export function copilotSessionStateDir(): string {
+  return path.join(copilotHome(), "session-state");
+}
+
+/** `~/.agents/skills/` read as a discovery location (the same directory as {@link sourceSkillsDir}). */
+export function agentsSkillsDir(): string {
+  return sourceSkillsDir();
+}
+
+/**
+ * Every place inside a project root that the scope layer reads.
+ *
+ * Kept here so the rule "paths are decided only in paths.ts" holds for
+ * project-relative locations too.
+ */
+export function projectPaths(root: string) {
+  const j = (...parts: string[]): string => path.join(root, ...parts);
+  return {
+    claudeMd: j("CLAUDE.md"),
+    dotClaudeMd: j(".claude", "CLAUDE.md"),
+    claudeLocalMd: j("CLAUDE.local.md"),
+    agentsMd: j("AGENTS.md"),
+    geminiMd: j("GEMINI.md"),
+    claudeRulesDir: j(".claude", "rules"),
+    claudeSkillsDir: j(".claude", "skills"),
+    claudeAgentsDir: j(".claude", "agents"),
+    claudeCommandsDir: j(".claude", "commands"),
+    claudeSettings: j(".claude", "settings.json"),
+    claudeSettingsLocal: j(".claude", "settings.local.json"),
+    mcpJson: j(".mcp.json"),
+    githubMcpJson: j(".github", "mcp.json"),
+    copilotInstructions: j(".github", "copilot-instructions.md"),
+    githubInstructionsDir: j(".github", "instructions"),
+    githubSkillsDir: j(".github", "skills"),
+    agentsSkillsDir: j(".agents", "skills"),
+    githubAgentsDir: j(".github", "agents"),
+    copilotRepoSettings: j(".github", "copilot", "settings.json"),
+    copilotLocalSettings: j(".github", "copilot", "settings.local.json"),
+  };
+}
+export type ProjectPaths = ReturnType<typeof projectPaths>;
