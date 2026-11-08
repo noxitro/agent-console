@@ -41,6 +41,7 @@ import type {
   WireError,
 } from "./contract.js";
 import type { AmOutput, EngineTransport } from "./transport.js";
+import type { InstalledJson, ProjectAction, ProjectsActionJson, ProjectsJson } from "./scope-contract.js";
 
 export type { AmOutput, EngineTransport } from "./transport.js";
 
@@ -540,3 +541,22 @@ export async function shutdownServer(): Promise<void> {
 }
 
 export type { Apply, Doctor, Import, Inventory, Plan } from "./contract.js";
+
+/* ------------------------------------------------------------------ */
+/* Units and projects (ARCHITECTURE.md「単位とプロジェクト」)           */
+/* ------------------------------------------------------------------ */
+
+/** `ac projects` — the projects the harnesses recorded. Writes only agent-console's cache. */
+export async function projects(options: { refresh?: boolean } = {}): Promise<ProjectsJson> {
+  return (await run<ProjectsJson>(["projects", ...(options.refresh === true ? ["--refresh"] : [])])).payload;
+}
+
+/** `ac projects <action> <target>` — pin, hide or add; writes `~/.agent-console/projects.json` only. */
+export async function projectAction(action: ProjectAction, target: string): Promise<ProjectsActionJson> {
+  return (await run<ProjectsActionJson>(["projects", action, target])).payload;
+}
+
+/** `ac installed [--project <id>]` — what each harness loads, by unit. Read-only. */
+export async function installed(projectId?: string): Promise<InstalledJson> {
+  return (await run<InstalledJson>(["installed", ...(projectId !== undefined ? ["--project", projectId] : [])])).payload;
+}

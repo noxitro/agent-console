@@ -41,6 +41,7 @@
   import DetailPane from "./lib/DetailPane.svelte";
   import Diagram from "./lib/Diagram.svelte";
   import FaultPlate from "./lib/FaultPlate.svelte";
+  import InstalledView from "./lib/InstalledView.svelte";
   import Icon from "./lib/Icon.svelte";
   import StatusBar from "./lib/StatusBar.svelte";
   import StatusDrawer from "./lib/StatusDrawer.svelte";
@@ -48,9 +49,24 @@
   import { stepRemovalFocus } from "./lib/modalfocus.js";
   import { omittedTargetsNote } from "./lib/schematic.js";
   import { Session } from "./lib/session.svelte.js";
+  import { InstalledState, installedAnnouncement } from "./lib/installed.svelte.js";
   import { hasServer, KEYLESS_MESSAGE, servedByServer, shutdownServer } from "./lib/engine.js";
 
   const session = new Session();
+
+  /*
+   * Two views (ARCHITECTURE.md「単位とプロジェクト」): Installed — what each
+   * harness loads, by unit — is the default; 配布 is the inherited
+   * source-of-truth console. The survey still runs at mount for both, since
+   * the status bar and the 配布 tables need it.
+   */
+  type View = "installed" | "distribute";
+  const VIEWS: { id: View; label: string }[] = [
+    { id: "installed", label: "Installed" },
+    { id: "distribute", label: "配布" },
+  ];
+  let view = $state<View>("installed");
+  const inst = new InstalledState();
 
   /*
    * A page the server served, in a tab that holds no key (the address was typed,
@@ -76,7 +92,10 @@
   const frozen = $derived(serverState === "stopped" || keyless);
 
   onMount(() => {
-    if (!keylessAtLoad) void session.survey();
+    if (!keylessAtLoad) {
+      void session.survey();
+      void inst.start();
+    }
   });
 
   const sessionBusy = $derived(
@@ -137,6 +156,10 @@
     if (serverState === "stopped") return "";
     if (keyless) return KEYLESS_TEXT;
     if (serverState === "stopping") return "サーバーを終了しています。";
+    if (view === "installed") {
+      const said = installedAnnouncement(inst);
+      if (said !== null) return said;
+    }
     // 「再走査」 on the very first read was a claim about a previous one that
     // never happened. `surveyedAt` is null until a survey succeeds, which is
     // exactly the distinction.
@@ -254,6 +277,22 @@
       <p class="path">{sourceRoot}</p>
     </div>
 
+    <nav class="tabs" aria-label="画面" inert={frozen}>
+      {#each VIEWS as v (v.id)}
+        <button
+          type="button"
+          class="tab"
+          aria-current={view === v.id ? "page" : undefined}
+          onclick={() => {
+            view = v.id;
+          }}
+        >
+          {v.label}
+        </button>
+      {/each}
+    </nav>
+
+    {#if view === "distribute"}
     <nav class="tabs" aria-label="資産の種別" inert={frozen}>
       {#each ASSET_TABS as tab (tab.type)}
         <button
@@ -266,8 +305,10 @@
         </button>
       {/each}
     </nav>
+    {/if}
 
     <div class="topbar__ops" inert={frozen}>
+      {#if view === "distribute"}
       <p class="scanned">
         <span class="annotation">走査</span>
         <span class="num">{clock(session.surveyedAt)}</span>
@@ -298,6 +339,7 @@
       >
         <Icon name="map" size={14} />マップ
       </button>
+      {/if}
       {#if session.mode === "server" && !keyless}
         <button
           type="button"
@@ -412,6 +454,9 @@
   {/if}
   </div>
 
+  {#if view === "installed"}
+    <InstalledView state={inst} {frozen} />
+  {:else}
   <main class="workspace" inert={frozen}>
     {#if session.mapView}
       <!--
@@ -481,8 +526,9 @@
       />
     {/if}
   </main>
+  {/if}
 
-  {#if session.drawer !== null && !frozen}
+  {#if view === "distribute" && session.drawer !== null && !frozen}
     <StatusDrawer
       which={session.drawer}
       doctor={session.findings}
@@ -493,6 +539,7 @@
     />
   {/if}
 
+  {#if view === "distribute"}
   <div class="contents" inert={frozen}>
   <StatusBar
     errorCount={session.errorCount}
@@ -516,6 +563,7 @@
     onApply={() => session.requestApply()}
   />
   </div>
+  {/if}
 </div>
 
 <ConfirmApply

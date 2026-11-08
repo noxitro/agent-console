@@ -27,4 +27,6 @@ console.log("\n== Server under load ==");
 const load = run("server.e2e.mjs");
 console.log("\n== GUI: everything the am GUI could do ==");
 const gui = run("gui.e2e.mjs");
-process.exit(load === 0 && gui === 0 ? 0 : 1);
+console.log("\n== Installed: units and projects (P2) ==");
+const installed = run("installed.e2e.mjs");
+process.exit(load === 0 && gui === 0 && installed === 0 ? 0 : 1);
