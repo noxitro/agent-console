@@ -247,10 +247,12 @@ try {
     await old.reload();
     await old.locator(".strip", { hasText: "このタブでは操作できません" }).first().waitFor({ timeout: 10000 });
     const plates = await old.getByText("エンジンが停止しました").count();
-    const workspaceInert = await old.locator("main.workspace[inert]").count();
+    // Whichever view is showing (Installed by default since P2), its main region is inert.
+    const workspaceInert = await old.locator("main[inert]").count();
+    const workspaceLive = await old.locator("main:not([inert])").count();
     await old.close();
     assert(plates === 0, "a stale-key tab shows an engine fault plate");
-    assert(workspaceInert === 1, "a stale-key tab can still be operated");
+    assert(workspaceInert === 1 && workspaceLive === 0, "a stale-key tab can still be operated");
     assert(unchanged(), "manifest.json changed");
     return "401 → keyless notice, console frozen, no fault plate";
   });

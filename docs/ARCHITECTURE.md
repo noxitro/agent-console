@@ -39,7 +39,73 @@ agent-console は、Claude Code や GitHub Copilot などのコーディング�
 | `src/server/engine-queue.ts` / `engine-worker.ts` | エンジンのスレッド |
 | `src/server/exec.ts` | プログラムの起動(今はブラウザを開くことだけ) |
 
-今後のフェーズで、単位(個人 / プロジェクト / ローカル)の層、プラグインの層、指示ファイルの層、カタログの層を足す予定である(「フェーズとゲート」)。カタログの閲覧を足すときも、ネットワークに出るのはその層だけにし、取得先は固定の許可リストに限る。
+単位(個人 / プロジェクト / ローカル)とプロジェクトの発見、プラグインの読み取りは P2 で `src/scope/` に足した(「単位とプロジェクト」)。指示ファイルの層とカタログの層は今後のフェーズで足す(「フェーズとゲート」)。カタログの閲覧を足すときも、ネットワークに出るのはその層だけにし、取得先は固定の許可リストに限る。
+
+## 単位とプロジェクト
+
+P2 で足した層(`src/scope/`)。Claude Code と GitHub Copilot(CLI とアプリ)が読むものを、**単位**ごとに一覧し、毎セッションどれだけコンテキストに載るか(常時コスト)を見積もる。読むだけで、ハーネスのファイルには書き込まない。書くのは agent-console 自身の `~/.agent-console/projects.json`(固定・非表示・手動追加)と `~/.agent-console/cache/` だけ。
+
+| 単位 | 意味 | 例 |
+|---|---|---|
+| 個人(`user`) | その PC のユーザー全体に効く | `~/.claude/…`、`~/.copilot/…`、`~/.agents/skills` |
+| プロジェクト(`project`) | リポジトリに入り、共有される | `<root>/.claude/…`、`<root>/.github/…`、`<root>/AGENTS.md`、`<root>/.mcp.json` |
+| ローカル(`local`) | そのリポジトリだけに効き、共有されない | `<root>/CLAUDE.local.md`、`<root>/.claude/settings.local.json`、`~/.claude.json` の `projects[<root>]`、`<root>/.github/copilot/settings.local.json` |
+
+一覧の 1 行は「ディスクや設定ファイルにある 1 つのもの」で、ハーネスごとの**届き方**(読むか・どのパスから・どの設定で有効 / 無効が決まったか・常時コスト・確度)を持つ。リンクで共有された skill や、両方のハーネスが読む `.mcp.json` のサーバーは、1 行に 2 つの届き方として出る。
+
+コマンドは `ac projects [--refresh]`(発見)、`ac projects pin|unpin|hide|unhide|forget <id>` / `ac projects add <folder>`(設定)、`ac installed [--project <id>]`(一覧)。画面の既定のタブ「Installed」がこれを使い、従来の画面は「配布」タブに移った。
+
+### 置き場所と確度
+
+確度: 公式(公式文書)/ 実測(「スパイクの判定」の方法で確かめた)/ 未確認。**未確認の届き方は、表示はするが合計に含めず、操作の対象にもしない。**
+
+| 資産 | Claude Code | Copilot CLI | 確度 |
+|---|---|---|---|
+| 指示(個人) | `~/.claude/CLAUDE.md`(@import をたどる) | `$COPILOT_HOME/copilot-instructions.md`、`$COPILOT_HOME/instructions/**/*.instructions.md` | 公式 / 公式・実測 |
+| 指示(プロジェクト) | `CLAUDE.md`、`.claude/CLAUDE.md`、`.claude/rules/**/*.md`(`paths` 付きは条件付き)、`AGENTS.md`(CLAUDE.md 類が無いとき。import されていれば import 経由) | `.github/copilot-instructions.md`、ルートと cwd の `AGENTS.md`・`CLAUDE.md`・`GEMINI.md`、`.github/instructions/**/*.instructions.md` | 公式 / 公式・実測 |
+| 指示(Copilot の `.claude/CLAUDE.md`) | — | 公式文書は読むとするが、1.0.107 の実測では読まれなかった | 未確認 |
+| 指示(ローカル) | `CLAUDE.local.md` | 読まない | 公式 / 実測 |
+| 指示(Claude の `~/.claude/rules/`) | 公式文書で確かめていない | — | 未確認 |
+| skill | `~/.claude/skills/`(`synced/` は claude.ai から同期)、`<root>/.claude/skills/` | `~/.copilot/skills/`、`~/.agents/skills/`、`<root>/.github/skills/`・`.agents/skills/`・`.claude/skills/` | 公式 / 公式・実測 |
+| agent | `~/.claude/agents/`、`<root>/.claude/agents/` | `~/.copilot/agents/`、`<root>/.github/agents/`、`<root>/.claude/agents/` | 公式 / 公式・実測(`.claude/agents` は実測) |
+| command | `~/.claude/commands/`、`<root>/.claude/commands/` | prompt files は CLI 非対応 | 公式 |
+| MCP | 個人 `~/.claude.json#mcpServers`、プロジェクト `.mcp.json`(承認の記録で有効 / 無効 / 不明)、ローカル `~/.claude.json#projects[<root>].mcpServers` | 個人 `~/.copilot/mcp-config.json`、プロジェクト `.mcp.json`(無ければ `.github/mcp.json`)。信頼済みのフォルダだけで読む | 公式 / 公式・実測 |
+| プラグイン | `~/.claude/plugins/installed_plugins.json`(v2)と、各単位の settings の `enabledPlugins`(local > project > user) | `~/.copilot/installed-plugins/` と、各単位の settings(`~/.copilot/settings.json` < `.github/copilot/settings.json` < `settings.local.json`)の `enabledPlugins` | 公式 |
+| skill の切り替え | `skillOverrides`、`disable-model-invocation`、`syncClaudeAiSkills` | `disabledSkills` | 公式 |
+
+`~/.copilot/config.json`(認証情報と信頼済みフォルダ)は読まない。そのため Copilot がプロジェクトの MCP を読むかは「不明」と出す。MCP の定義から読むのは名前と通信方式だけで、コマンド・環境変数・ヘッダは読まない。
+
+### プロジェクトの発見
+
+1. **集める。** Claude: `~/.claude.json` の `projects` の**キー**と `githubRepoPaths`(このファイルはアカウント情報も含むので、この 2 つを写したらすぐ捨てる)。Copilot: `session-state/<id>/events.jsonl` の先頭行(無ければ `workspace.yaml`)の `cwd` / `gitRoot`。手動で足したフォルダ。
+2. **絞る。** 実在しないものを外す → ホーム・一時フォルダ・`~/.claude`・`~/.copilot`・`C:\Windows` の下を外す → リポジトリのルートに寄せる → ワークツリーを元のリポジトリにまとめる。git 外のフォルダは残し、画面では既定で隠す。
+3. **並べる。** 固定したもの、最終利用の新しい順(Claude は transcript、Copilot は `events.jsonl` の更新時刻)。
+
+リポジトリのルートとワークツリーは、git を起動せず `.git` を読んで決める(`src/scope/gitroot.ts`)。`.git` がディレクトリならそこがルート、ファイル(`gitdir:`)なら、その先の `commondir` の有無でワークツリーかサブモジュールかを見分ける。実環境で `git rev-parse --show-toplevel` / `--git-common-dir` を全候補に対して実行した結果と、ルートの集合が一致することを確かめた。git を候補ごとに 2 回起動する方式は、同じ環境で 2 秒余りかかった。
+
+キャッシュ(`~/.agent-console/cache/projects.json`)は、Copilot のセッションごとの先頭行の読み取り結果と、最後の一覧のルート(API が受け取るプロジェクト id をルートに戻すため)を持つ。消しても失うのは速さだけ。API はプロジェクトを id(ルートの sha256 の先頭 12 桁)で受け取り、任意のパスは `projects add` 以外では受け付けない。
+
+### 常時コスト
+
+毎セッションの最初からコンテキストに載る文字数の静的な見積もり(`src/scope/cost.ts`)。形を実測できたものはその形で、できていないものは公式の記述どおりに数える。
+
+- Claude: skill は名前 + description + when_to_use、agent と command は名前 + description、指示ファイルは本文 + @import 先(4 段まで)。`skillOverrides: off` と `disable-model-invocation` は 0、`name-only` は名前だけ(内訳は推測)
+- Copilot: skill は `<available_skills>` の 1 件分、agent は task ツールの説明の 1 行、常に読まれる指示ファイルは `<custom_instruction>` の 1 件分(copilot-instructions.md・AGENTS.md・CLAUDE.md の `@` 参照の先は、その中に `<imported_custom_instruction source="絶対パス">` として入る)、`applyTo` が当たらない `*.instructions.md` は一覧表の 1 行(どれも 1.0.107 の実測の形)
+- 合計に入れるのは、状態が「有効」の届き方だけ。同じ実体に 2 つのパスから届く場合(`~/.copilot/skills` から `~/.agents/skills` へのリンクなど)は、ハーネスごとに 1 回だけ数える。frontmatter が読めず、常時か条件付きかを決められないファイルは「不明」にして数えない。条件付きは表示だけにする。MCP のツール定義とハーネス自身のシステムプロンプトは数えない(「未計測」として件数を出す)
+- 字数は Unicode のコードポイント数。トークンは推測の換算(英数 3.2 字 / トークン、それ以外 0.87 トークン / 字)で、画面にも「推測」と書く
+
+### スパイクの判定
+
+方法: 公式文書の確認と、隔離した `COPILOT_HOME` での実測。実測では、Copilot CLI の BYOK の設定(`COPILOT_OFFLINE=true` と `COPILOT_PROVIDER_BASE_URL`)を 127.0.0.1 の偽のモデルサーバーに向け、CLI がモデルへ送るリクエストの本文をそのまま受け取って、目印を書いた各ファイルの中身が載ったかを調べた。ネットワークにも課金にも触れない。MCP とプラグインは同じ隔離環境で `copilot mcp list --json` と `copilot plugin marketplace list` を使った。対象は Copilot CLI 1.0.107(2026-11-08)。
+
+| ID | 判定 | 確度 | 出典 |
+|---|---|---|---|
+| S11 | **合格(1 行を除く)。** 届く: `$COPILOT_HOME/copilot-instructions.md`、`$COPILOT_HOME/instructions/*.instructions.md`、`.github/copilot-instructions.md`、ルートと cwd の `AGENTS.md`・`CLAUDE.md`・`GEMINI.md`、`applyTo` が無いか `**` の `*.instructions.md`(本文)。`applyTo` が他のパターンのものは一覧表の 1 行だけ。届かない: `CLAUDE.local.md`。`CLAUDE.md` などの `@` 参照は展開され、import 先が単独でも読まれるファイル(CLAUDE.md が import する AGENTS.md など)は 2 回載る。優先順位は無く、すべて結合される(順は個人 → `.github` → AGENTS → CLAUDE → GEMINI → instructions)。**`.claude/CLAUDE.md` は公式文書と実測が食い違うので「未確認」**とした | 公式・実測 | docs.github.com/en/copilot/how-tos/copilot-cli/add-custom-instructions、docs.github.com/en/copilot/reference/custom-instructions-support |
+| S12 | **合格。** MCP: `.mcp.json`、無ければ `.github/mcp.json`(同じリポジトリに両方あると `.github/mcp.json` は読まれない)。`.vscode/mcp.json` とリポジトリ内の `.copilot/mcp-config.json` は読まない。信頼済みのフォルダだけ。プラグイン: リポジトリの `.github/copilot/settings.json` と `settings.local.json` が `enabledPlugins` と `extraKnownMarketplaces` を持てる(宣言すると自動で導入される)。導入先は個人の `~/.copilot/installed-plugins/` だけ | 公式・実測 | docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers、docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference、同 cli-plugin-reference、`copilot help config`、`copilot mcp --help` |
+| S16 | **合格。** 実環境で、キャッシュ無し 0.6〜1.5 秒、キャッシュあり 0.1〜0.2 秒(CLI の起動を含めて 0.55 秒 / 0.23 秒) | 実測 | `e2e/l3-scope.mjs` |
+
+Claude 側(memory・settings・MCP の単位)は公式文書(code.claude.com/docs/en/memory・settings・mcp)で確かめた。
+
 
 ## 起動と終了
 
@@ -102,9 +168,10 @@ agent-console は、Claude Code や GitHub Copilot などのコーディング�
 
 `/api/run` の `args` は、`src/server/vocabulary.ts` の固定表に照らしてから実行する。任意の argv は受け付けない。
 
-- コマンド: `inventory` / `doctor` / `plan` / `apply` / `import` / `enable` / `disable` / `remove`
+- コマンド: `inventory` / `doctor` / `plan` / `apply` / `import` / `enable` / `disable` / `remove` / `projects` / `installed`
+- `projects` は操作(`pin` / `unpin` / `hide` / `unhide` / `forget` とプロジェクト id、または `add` と絶対パスのフォルダ)を取れる。id は 16 進 12 桁、フォルダは 260 字まで・`..` を含まない・制御文字を含まない。操作付きの `projects` は書き込みとして扱う(`--read-only` で断る)
 - `enable` / `disable` / `remove` は、資産の種別(`skill` / `mcp` / `agent` / `command`)と名前を取る。名前は英数字と `-` `_` `.`、64 字まで、`-` で始まらないもの
-- フラグ: `--prune` / `--yes` / `--dry-run` / `--move` / `--prefer <target>`
+- フラグ: `--prune` / `--yes` / `--dry-run` / `--move` / `--prefer <target>`、`--refresh`(`projects` だけ)、`--project <id>`(`installed` だけ)
 - argv は 8 個まで。本文は 64 KiB まで
 - `--json` は語彙に無い。JSON 契約は画面の送り口そのものなので、サーバーが自分で付ける
 - `import` は、確認に結び付ける plan が無いので API からは断る(端末で `ac import`)
@@ -146,7 +213,7 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 | Svelte の画面 | 流用した。送り口だけを差し替えた |
 | 名前 | パッケージは `agent-console`、CLI は `ac`(`am` も別名として残す)、起動は `agent-console.bat` |
 | 文書 | エンジンの仕様は am の SPEC v3.1(`docs/SPEC.md`)のまま。agent-console での変更はこの文書に書く |
-| PC 固有の状態 | `~/.agent-console/` に置く(サーバーのロックファイル、doctor の任意の設定) |
+| PC 固有の状態 | `~/.agent-console/` に置く(サーバーのロックファイル、doctor の任意の設定、プロジェクトの固定・非表示・手動追加と、発見のキャッシュ) |
 
 **ソースに残った古いコマンドの写し(`command.legacy`)。** 正本を別の場所へ移したあとも、`~/.agents-manager/commands/` に古い写しが残ることがある。`apply` はそれを各ターゲットへ配ってしまう。どの名前が古いかは利用者にしか分からないので、規則はコードに書かず、任意の設定ファイル `~/.agent-console/legacy-commands.json` から読む。
 
@@ -188,8 +255,8 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 |---|---|---|---|
 | **P0 準備**(済) | am を元にリポジトリを作り、名前を変える(パッケージ・CLI・README)。基準値(テスト・CLI の実測ゲート・svelte-check)を測り直す | リポジトリの中だけ | 基準値が am と一致する |
 | **P1 ブラウザ化**(済) | サーバー、トークン、Host / Origin の検査、API の語彙、画面の送り口の差し替え、Tauri の削除、`agent-console.bat`。機能は am と同じ | am と同じ | S15 が緑。am の GUI で出来たことがブラウザで全部できる(Playwright の e2e)。既存の JSON スナップショットの差分が 0 |
-| **P2 単位とプロジェクト** | 単位の層、プロジェクトの発見(Claude と Copilot が記録しているフォルダを集め、実在しないもの・git 外のものを絞る)、Claude と Copilot の資産を個人 / プロジェクト / ローカルの単位で表示、プラグインの読み取り、常時コスト(毎セッションのコンテキストに載る量)の見積もり | なし(`~/.agent-console/` の設定とキャッシュだけ) | S11・S12・S16 の判定済み。実 HOME の読み取りで前後のカナリアが変わらない。件数を手で数えた値と照合する |
-| **P2 単位とプロジェクト**(画面の決定) | ツールバーに単位のセグメント(すべて / 個人 / プロジェクト▾ / ローカル。既定は個人で、従来の挙動を変えない)、表に単位の列(バッジ + パス)。優先順位(Claude は local > project > user)で上書きされて効いていない行はその旨を示す。個人以外の単位の行と、プラグインの行にはスイッチも削除も出さない(書き込みの意味が違うため、同じ部品で 2 つの意味を持たせない)。Copilot のプロジェクト単位の置き場所は S12 の判定に委ね、確かめられないものは「未確認」と出す。左サイドバー化と Browse / Installed は採らない(PRODUCT.md Brand Commitments) | なし | e2e に単位の切り替えの確認を足す。`e2e/gui.e2e.mjs` は上部タブ名と行テキストに依存しているので、列を足したら合わせて直す |
+| **P2 単位とプロジェクト**(済) | 単位の層、プロジェクトの発見(Claude と Copilot が記録しているフォルダを集め、実在しないもの・git 外のものを絞る)、Claude と Copilot の資産を個人 / プロジェクト / ローカルの単位で表示、プラグインの読み取り、常時コスト(毎セッションのコンテキストに載る量)の見積もり | なし(`~/.agent-console/` の設定とキャッシュだけ) | S11・S12・S16 の判定済み。実 HOME の読み取りで前後のカナリアが変わらない。件数を手で数えた値と照合する |
+| **P2 単位とプロジェクト**(画面の決定、後半) | Installed 画面を GitHub Copilot アプリの Installed の構造に作り直す(PRODUCT.md Brand Commitments): 種別ごとのセクション(Plugins を 1 級に)、各行に出どころ(Plugin: / Marketplace: / 個人 / プロジェクト / ローカル)、上部に検索と種類の絞り込み、プロジェクトの選択はヘッダーへ。左の単位レールと合計表は廃止し、常時コストはセクションの見出しか詳細ペインに移す。見た目は紙のパレットのまま。読み取りのみなので操作に見える部品は置かない(トグルは P4 で)。単位をまたいだ重複・上書きは行の中で可視にし、確かめられない行は「未確認」の破線バッジ。採らなかった案: 配布の表に単位セグメントと単位列を足す形(PR #10、ブランチ `claude/exciting-cray-ea7ca3` に参照用に残す) | なし | Installed の e2e(`e2e/installed.e2e.mjs`)を新しい構造に合わせて直し、プラグイン由来の行と出どころの表示を確認に加える。impeccable audit と web-design-guidelines の照合 |
 | **P3 指示ファイル** | 表示(リンクと import をたどった届き先の木、字数)と編集(差分 → 確認 → 退避 → 原子的な置き換え) | 指示ファイル | 改行と BOM が元のまま残る(陽性コントロール付き)。開いた後にファイルが変わっていたら保存を断る |
 | **P4 操作** | プラグインとマーケットプレイスの操作(公式 CLI 経由)、単位を指定した導入・削除、skill の表示の切り替え | 公式 CLI 経由 | 実データでのアンインストールを試し、事後の読み直しで確かめる |
 | **P5 Browse** | カタログの取得とキャッシュ、検索、カテゴリ、カードからの導入 | キャッシュと、公式 CLI 経由の導入 | S13・S14 の判定済み。オフラインでもキャッシュから描ける。許可リストの外のホストへ出ないことをテストで固定する |
@@ -215,7 +282,8 @@ apply は書き込みの直前に対象を読み直して描き直す(SPEC §6.1
 |---|---|---|
 | 単体・契約・サーバー | `npm test` | vitest。アダプタのラウンドトリップ、JSON 契約のスナップショット、doctor の所見、画面の導出ロジック、サーバーの守り |
 | CLI の実測ゲート | `npm run e2e:cli` | ビルド済みの CLI を子プロセスで起動し、使い捨ての HOME で 22 項目を測る。生の出力は `e2e-artifacts/v3.1/*.txt`(一時 HOME の実パスを含むので追跡しない) |
-| ブラウザの e2e | `npm run e2e` | Playwright。S15 → 負荷をかけたサーバー → 画面の e2e(書き込みを含む)。書き込みは毎回ディスクで確かめ、画面の表示を証拠にしない |
+| ブラウザの e2e | `npm run e2e` | Playwright。S15 → 負荷をかけたサーバー → 画面の e2e(書き込みを含む)→ Installed の e2e(使い捨ての HOME とリポジトリで、`~/.agent-console` 以外のファイルが変わらないことをハッシュと mtime で確かめる)。書き込みは毎回ディスクで確かめ、画面の表示を証拠にしない |
+| 実 HOME の読み取り(P2 の L3) | `node e2e/l3-scope.mjs` | 実 HOME を単位の層で読み、`~/.agent-console/` の外への書き込みを fs の見張りで 0 件と確かめ、読んだファイルのハッシュと mtime を前後で比べる。S16 の時間も測る。生の記録は `e2e-artifacts/p2/`(この PC のパスを含むので追跡しない) |
 | 画面の型 | `npm --prefix ui run check` | svelte-check |
 
 - **HOME の隔離。** テストは一時ディレクトリを HOME にする(`AC_HOME` / `AM_HOME`)。vitest は開始時に `AC_HOME` / `AC_APPDATA` / `AC_CONFIG_HOME` を消す(`test/setup-env.ts`)ので、開発者のシェルの設定がテストの HOME を上書きしない。`npm run e2e:cli` も子プロセスに `AC_HOME` と `AM_HOME` の両方を渡す。
