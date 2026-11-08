@@ -42,6 +42,21 @@
 
   --caution-wash: rgba(26, 43, 60, 0.06);
 
+  /*
+   * Hover lifts. A control under the pointer rises a step towards the light:
+   * paper to a brighter sheet, ink to a lighter ink. The fault fill carries
+   * white, the one colour on it that clears 4.5:1.
+   */
+  --paper-lift: #fffdf6;
+  --ink-lift: #24384c;
+  --on-fault: #ffffff;
+
+  /* The confirmation dialogs: the one place a second sheet lies on top. */
+  --shadow-dialog:
+    0 2px 4px rgba(26, 43, 60, 0.12),
+    0 28px 56px -28px rgba(26, 43, 60, 0.55);
+  --backdrop: rgba(26, 43, 60, 0.42);
+
   /* Type */
   --sans: "Zen Kaku Gothic New", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
   --mono: "M PLUS 1 Code", "Cascadia Mono", "Consolas", monospace;
@@ -64,7 +79,12 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   color-scheme: light;
-  font-size: 16px;
+  /*
+   * The browser's own text size, not a fixed 16px. Every size here is in rem, so
+   * a reader who has set a larger default in the browser gets the whole console
+   * at that size; a pixel value on the root threw that setting away.
+   */
+  font-size: 100%;
 }
 
 *,
@@ -183,7 +203,7 @@ button {
 }
 
 .btn:hover:not(:disabled, [aria-busy="true"]) {
-  background: #fffdf6;
+  background: var(--paper-lift);
   box-shadow: 0 1px 0 var(--rule-strong);
 }
 
@@ -238,7 +258,7 @@ button {
 }
 
 .btn--primary:hover:not(:disabled, [aria-busy="true"]) {
-  background: #24384c;
+  background: var(--ink-lift);
 }
 
 .btn--primary:disabled {
@@ -258,7 +278,7 @@ button {
 }
 
 .btn--commit:hover:not(:disabled, [aria-busy="true"]) {
-  background: #24384c;
+  background: var(--ink-lift);
 }
 
 .btn--commit:disabled {
@@ -280,7 +300,7 @@ button {
 .btn--danger:focus-visible:not(:disabled, [aria-busy="true"]) {
   background: var(--fault);
   border-color: var(--fault);
-  color: #fff;
+  color: var(--on-fault);
 }
 
 .btn--danger:focus-visible {
@@ -379,6 +399,153 @@ button {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared controls                                                     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The enable switch and the delivery badge appear in the table and again in the
+ * detail pane. They used to be two scoped copies each, and the copies had
+ * already drifted: the detail pane's switch had no busy look, so the one being
+ * pressed kept its green dot while the table's went grey. One definition here;
+ * a component sets only what is genuinely its own (the detail pane's taller
+ * switch).
+ */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-2);
+  white-space: nowrap;
+  min-height: 1.75rem;
+  padding: 0 var(--gap-2);
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+
+.toggle__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  border: 1px solid var(--ink-2);
+  background: transparent;
+}
+
+.toggle[aria-checked="true"] .toggle__dot {
+  background: var(--pass);
+  border-color: var(--pass);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Busy, not disabled — pressing it is what makes it busy, and nothing else on
+   screen changes until the follow-up survey starts. */
+.toggle[aria-busy="true"] {
+  color: var(--ink-3);
+  border-color: var(--rule);
+}
+
+.toggle[aria-busy="true"] .toggle__dot,
+.toggle[aria-busy="true"][aria-checked="true"] .toggle__dot {
+  background: transparent;
+  border-color: var(--ink-3);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 var(--gap-1);
+  border: 1px solid var(--rule-strong);
+  font-size: var(--t-micro);
+  font-family: var(--mono);
+  color: var(--ink-2);
+  background: var(--paper);
+}
+
+.badge--match {
+  color: var(--pass-text);
+  border-color: var(--pass);
+  background: var(--pass-wash);
+}
+
+.badge--pending {
+  color: var(--fault-text);
+  border-color: var(--fault);
+  background: var(--fault-wash);
+}
+
+/* 破線 = 実在しない・未確定 (DESIGN: Shapes). 非対応 is a refusal, 未取得 is a
+   measurement nobody took; both are "no state here", so both are dashed. */
+.badge--unsupported,
+.badge--unknown {
+  border-style: dashed;
+}
+
+/* Delivered, and switched off on the far side (SPEC §10.3): a solid, quiet fact
+   — not a fault, and not the absence the dashed badges mean. */
+.badge--off {
+  background: var(--paper-inset);
+}
+
+/*
+ * The confirmation dialogs (apply and remove) are the same second sheet; each
+ * keeps only its width. The remove dialog's backdrop had lost the blur the apply
+ * dialog's has, so the two ceremonies looked like two different products.
+ */
+.dialog {
+  padding: 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-dialog);
+}
+
+.dialog::backdrop {
+  background: var(--backdrop);
+  backdrop-filter: blur(1.5px);
+}
+
+/* ------------------------------------------------------------------ */
+/* Forced colours (Windows contrast themes)                            */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A contrast theme repaints every background to Canvas and drops box-shadow.
+ * That erased four marks that carry state: the ink fill of the selected tab and
+ * chip, the selected row's bar, and the switch's dot — a selected tab looked
+ * exactly like the others. Each is redrawn in the theme's own system colours:
+ * the dot here, the tab, chip and row beside their own (scoped, and so more
+ * specific) rules in App.svelte and AssetTable.svelte. `forced-color-adjust:
+ * none` is set only on the element whose fill is the mark, so everything inside
+ * a row keeps the theme's colours.
+ */
+@media (forced-colors: active) {
+  .toggle__dot {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .toggle[aria-checked="true"] .toggle__dot {
+    border-color: CanvasText;
+    background: CanvasText;
+  }
+
+  .toggle[aria-busy="true"] .toggle__dot,
+  .toggle[aria-busy="true"][aria-checked="true"] .toggle__dot {
+    border-color: GrayText;
+    background: Canvas;
+  }
 }
 
 /* ------------------------------------------------------------------ */

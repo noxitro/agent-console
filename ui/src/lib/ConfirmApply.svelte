@@ -85,7 +85,7 @@
 
 <dialog
   bind:this={dialog}
-  class="confirm"
+  class="dialog confirm"
   aria-labelledby="confirm-title"
   aria-busy={busy}
   oncancel={(event) => {
@@ -203,22 +203,10 @@
 </dialog>
 
 <style>
+  /* The sheet, its shadow and its backdrop are shared with ConfirmRemove (app.css: `.dialog`). */
   .confirm {
     width: min(48rem, calc(100vw - 3rem));
     max-height: calc(100dvh - 4rem);
-    padding: 0;
-    border: 1.5px solid var(--ink);
-    border-radius: 2px;
-    background: var(--paper);
-    color: var(--ink);
-    box-shadow:
-      0 2px 4px rgba(26, 43, 60, 0.12),
-      0 28px 56px -28px rgba(26, 43, 60, 0.55);
-  }
-
-  .confirm::backdrop {
-    background: rgba(26, 43, 60, 0.42);
-    backdrop-filter: blur(1.5px);
   }
 
   .confirm[open] {
@@ -251,6 +239,12 @@
     gap: var(--gap-4);
     padding: var(--gap-5);
     max-height: calc(100dvh - 4rem);
+    /* On a short window the list keeps its floor (below) and the whole form
+       scrolls instead, footer included, so 適用する is always reachable. */
+    overflow-y: auto;
+    /* A scroll that reaches the end stays in the dialog instead of moving the
+       console behind it. */
+    overscroll-behavior: contain;
   }
 
   header {
@@ -313,17 +307,28 @@
     font-weight: 700;
   }
 
+  /*
+   * The list is never squeezed below a floor. It used to be allowed to shrink to
+   * nothing (`min-height: 0` on the section), and at a window height near 640px
+   * the very list the dialog asks permission for showed one row or none.
+   *
+   * Now its cap follows the window. The rest of the dialog takes about 38rem
+   * with its margins, so the list gets what is left, between 12rem (about two
+   * rows) and the old 22rem, and the section keeps whatever height its list
+   * has. When even the floor does not fit, the form scrolls (above), never the
+   * list into nothing. A short list keeps its own height; nothing is reserved
+   * for rows that are not there.
+   */
   .targets {
     display: flex;
     flex-direction: column;
-    min-height: 0;
   }
 
   .targets ul {
     list-style: none;
     margin: var(--gap-2) 0 0;
     padding: 0;
-    max-height: 22rem;
+    max-height: clamp(12rem, 100dvh - 38rem, 22rem);
     overflow-y: auto;
     border: 1px solid var(--rule);
     background: var(--paper-panel);

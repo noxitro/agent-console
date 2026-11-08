@@ -45,6 +45,20 @@
     onApply: () => void;
   } = $props();
 
+  /*
+   * What the DOCTOR cell says to a screen reader. It used to be the two counts
+   * whatever the state, so while the cell showed 「—」 (not yet read, or the read
+   * failed) it was heard as 「不良 0 件、注意 0 件」 — a clean bill of health
+   * nobody had measured.
+   */
+  const doctorLabel = $derived(
+    surveyStatus === "running"
+      ? "走査中"
+      : surveyStatus !== "ready"
+        ? "未取得"
+        : `不良 ${errorCount} 件、注意 ${warnCount} 件`,
+  );
+
   const planLabel = $derived(
     diffStatus === "running"
       ? "PLAN 取得中…"
@@ -67,7 +81,7 @@
     class:is-open={drawer === "doctor"}
     aria-expanded={drawer === "doctor"}
     aria-controls="statusbar-drawer"
-    aria-label="doctor 所見: 不良 {errorCount} 件、注意 {warnCount} 件。開いて一覧を見る"
+    aria-label="doctor 所見: {doctorLabel}。開いて一覧を見る"
     onclick={() => onDrawer(drawer === "doctor" ? null : "doctor")}
   >
     <span class="cell__label">DOCTOR</span>
