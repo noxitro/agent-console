@@ -19,7 +19,7 @@
    * section's first row.
    */
 
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
 
   import Icon from "./Icon.svelte";
   import { InstalledState, needsAttention, type KindFilter } from "./installed.svelte.js";
@@ -79,10 +79,21 @@
     detail?.scrollTo({ top: 0 });
   }
 
-  function onRowClick(row: InstalledRow): void {
+  /** One column (below the 62rem floor): the detail is under the list, so a click takes the reader there. */
+  const stacked = typeof window !== "undefined" ? window.matchMedia("(max-width: 62rem)") : null;
+
+  async function onRowClick(row: InstalledRow): Promise<void> {
     if (isTextSelectionClick(window.getSelection()?.toString())) return;
-    void select(row);
+    await select(row);
+    if (stacked?.matches === true) detail?.scrollIntoView({ block: "start" });
   }
+
+  // Changing what the list shows retires the last project action's message.
+  $effect(() => {
+    void s.query;
+    void s.kind;
+    untrack(() => s.clearNotice());
+  });
 
   /** ↑↓ Home End across every section, PageDown/PageUp between sections, Enter/Space selects. */
   function onRowKey(event: KeyboardEvent, row: InstalledRow): void {
@@ -127,7 +138,7 @@
   );
 </script>
 
-<main class="installed" inert={frozen} aria-label="Installed">
+<main class="installed" inert={frozen} aria-label="インストール済み">
   <section class="list-panel" aria-labelledby="inst-title">
     <header class="list-head">
       <div class="list-head__name">
@@ -167,10 +178,11 @@
           {s.allRows.length === 0 ? "この単位には、Claude と Copilot が読むものがありません。" : "絞り込みに当てはまる行がありません。"}
         </p>
       {:else}
-        <div class="sections" bind:this={listEl} aria-busy={s.status === "running"}>
+        <!-- One listbox for the whole list (one tab stop); each section is a group in it. -->
+        <div class="sections" role="listbox" aria-label="読み込まれる資産" bind:this={listEl} aria-busy={s.status === "running"}>
           {#each view as sec (sec.kind)}
             {@const cost = HARNESSES.map((h) => ({ ...h, c: sectionCost(sec.rows, h.id) })).filter((x) => x.c.chars > 0 || x.c.unmeasured > 0)}
-            <section class="sec" aria-labelledby="sec-{sec.kind}">
+            <div class="sec" role="group" aria-labelledby="sec-{sec.kind}">
               <header class="sec__head">
                 <h3 id="sec-{sec.kind}">
                   {SECTION_LABEL[sec.kind]}
@@ -190,7 +202,7 @@
                   </p>
                 {/if}
               </header>
-              <ul class="rows" role="listbox" aria-labelledby="sec-{sec.kind}">
+              <ul class="rows" role="none">
                 {#each sec.rows as row (row.id)}
                   {@const idx = ids.indexOf(row.id)}
                   <li
@@ -200,7 +212,7 @@
                     aria-selected={s.selectedId === row.id}
                     data-id={row.id}
                     tabindex={rowTabIndex(idx, active, flat.length)}
-                    onclick={() => onRowClick(row)}
+                    onclick={() => void onRowClick(row)}
                     onkeydown={(e) => onRowKey(e, row)}
                     onfocus={() => (focusedId = row.id)}
                     onblur={() => {
@@ -227,7 +239,7 @@
                   </li>
                 {/each}
               </ul>
-            </section>
+            </div>
           {/each}
         </div>
       {/if}
@@ -567,7 +579,7 @@
   .count-badge {
     min-width: 1.5rem;
     padding: 0 var(--gap-2);
-    border-radius: 999px;
+    border-radius: var(--radius-control);
     background: var(--surface-hover);
     color: var(--fg-2);
     font-size: var(--t-micro);
@@ -602,6 +614,10 @@
 
   /* The row: framed, slightly rounded — the Copilot app's row, without its switch. */
   .row {
+    position: relative;
+    /* Keep a focused row clear of the sticky section heading (WCAG 2.4.11). */
+    scroll-margin-top: 3.5rem;
+    scroll-margin-bottom: var(--gap-2);
     display: flex;
     align-items: center;
     gap: var(--gap-3);
@@ -619,7 +635,6 @@
   .row.is-selected {
     border-color: var(--accent);
     background: var(--select-wash);
-    box-shadow: inset 3px 0 0 var(--accent-text);
   }
 
   .row:focus-visible {
@@ -682,20 +697,30 @@
   }
 
   /*
-   * The state word. Plain text in a frame, never a switch (read-only until P4).
-   * Green only for "loaded every session" and red only for a read that failed
-   * (DESIGN.md: 赤は障害専用ルール — 無効 is a choice, not a fault). Dashed means
-   * "not established": unknown and unconfirmed.
+   * The state word. Plain text with a mark, never a frame: a framed word at the
+   * row's trailing edge sits exactly where the Copilot app puts its switch, and
+   * read as a button (read-only until P4). Green dot = loaded every session;
+   * hollow dot = switched off or not read; dashed underline = not established
+   * (unknown, unconfirmed). Red only for a read that failed (DESIGN.md: 赤は障害
+   * 専用ルール — 無効 is a choice, not a fault).
    */
   .state {
-    display: inline-block;
-    padding: 0 var(--gap-2);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-control);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: var(--t-small);
     line-height: 1.5;
     white-space: nowrap;
     color: var(--fg);
+  }
+
+  .state::before {
+    content: "";
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--fg-3);
   }
 
   .state__h {
@@ -703,9 +728,18 @@
   }
 
   .state--enabled {
-    border-color: var(--pass);
-    background: var(--pass-wash);
     color: var(--pass-text);
+  }
+
+  /* A border, not a fill, so a contrast theme keeps the dot (it repaints fills). */
+  .state--enabled::before {
+    border: 0.25rem solid var(--pass);
+  }
+
+  .state--conditional::before,
+  .state--via-import::before {
+    border-color: var(--pass);
+    border-style: dashed;
   }
 
   .state--disabled,
@@ -715,9 +749,14 @@
 
   .state--unknown,
   .state--unconfirmed {
-    border-style: dashed;
-    border-color: var(--fg-3);
     color: var(--fg-2);
+    text-decoration: underline dashed var(--fg-3);
+    text-underline-offset: 0.2em;
+  }
+
+  .state--unknown::before,
+  .state--unconfirmed::before {
+    border-style: dashed;
   }
 
   .muted {
@@ -990,14 +1029,14 @@
       border-color: CanvasText;
     }
 
-    .row.is-selected {
+    /* Only the mark opts out of the theme; the row's text keeps its colours. */
+    .row.is-selected::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
       forced-color-adjust: none;
-      border-color: Highlight;
-      box-shadow: inset 4px 0 0 Highlight;
-    }
-
-    .state--enabled {
-      border-width: 2px;
+      background: Highlight;
     }
   }
 </style>

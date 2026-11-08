@@ -254,7 +254,7 @@ button {
 /* The selected tab and chip keep their accent fill, so they recede by a step instead. */
 .app--frozen .tab[aria-current="page"],
 .app--frozen .chip[aria-checked="true"] {
-  background: var(--fg-3);
+  background: var(--fg-2); /* --canvas on it: 8.1:1 (--fg-3 was 4.4:1) */
   color: var(--canvas);
 }
 
@@ -617,6 +617,6 @@ button {
  */
 .tab.tab[aria-current="page"]:focus-visible,
 .chip.chip[aria-checked="true"]:focus-visible,
-.seg.seg[aria-pressed="true"]:focus-visible {
+.seg.seg.is-current:focus-visible {
   outline-color: var(--on-accent);
 }

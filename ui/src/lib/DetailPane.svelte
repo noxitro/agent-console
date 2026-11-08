@@ -425,7 +425,7 @@
    * Smaller and quieter so the note reads first, but on screen — not mono:
    * DESIGN's 等幅は識別子ルール ends 「文章には決して使わない」, and this is a
    * sentence. --fg-2 rather than --fg-3, which is for disabled framing and
-   * dormant conductors and measures 3.27:1 here.
+   * dormant conductors and measures 3.7:1 (DESIGN.md Colors) here.
    */
   .targets__detail--source,
   .finding-source {

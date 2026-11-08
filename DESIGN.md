@@ -184,7 +184,7 @@ components:
 
 ## Shapes
 
-控えめな角丸の世界。押せる部品(ボタン・入力欄・セグメント群・バッジ・タグ)は 4px(`--radius-control`)、パネル・Installed の行・ポップオーバー・ダイアログは 6px(`--radius-panel`)。丸みはこの二段だけで、ピル型(999px)はセクション見出しの件数バッジだけに許す。トグルのドット(0.55rem の円)は円形のまま、有効=検印緑の塗り、無効=空円。
+控えめな角丸の世界。押せる部品(ボタン・入力欄・セグメント群・バッジ・タグ)は 4px(`--radius-control`)、パネル・Installed の行・ポップオーバー・ダイアログは 6px(`--radius-panel`)。丸みはこの二段だけで、ピル型(999px)は使わない。トグルのドット(0.55rem の円)は円形のまま、有効=検印緑の塗り、無効=空円。
 
 ボーダーの太さと線種が意味を運ぶ: 1px --line=区切り、1px --line-strong=パネル外周と行、1px --control=押せる部品、1px --accent=選択中の行、2px fault=障害プレート。破線は「実在しない/未確定/但し書き」の記号: unsupported バッジ・PLAN 未取得バッジ・Installed の「未確認」と「不明」・fixture 帯が dashed 枠。
 
@@ -243,17 +243,17 @@ components:
 - 種類の絞り込みはネイティブの `<select>`(「すべての種類(N)」「Plugins(n)」…)。件数は検索後の数。
 
 ### Installed の一覧 — signature component
-- **セクション:** Plugins / MCP Servers / Skills / Agents / Commands / 指示ファイル の順に縦に並ぶ。空のセクションは出さない。見出し(t-md, 700)+ 件数バッジ(ピル、surface-hover 地、fg-2)+ 右に「常時 Claude N 字 · Copilot M 字」(未計測は「未計測 n」と別に数える)。
-- **行:** 1px --line-strong の枠 + 6px 角丸 + surface-2 地のカード状の行。左に 1 行目 = 名前(500)とフラグ、2 行目 = 出どころ(fg-2, small)、必要なら 3 行目 = 「個人 にも同じ名前があります」(accent-text)。右にハーネスごとの状態語(「Claude 有効」「Copilot 無効」)を縦に積む。
-- **状態語は操作に見せない:** 枠付きの文字であり、スイッチやボタンの形を取らない(P4 まで読み取りのみ)。有効 = pass 枠 + pass-wash + pass-text、無効・読まれない = 罫の枠 + fg-2、不明・未確認 = 破線枠。
+- **セクション:** Plugins / MCP Servers / Skills / Agents / Commands / 指示ファイル の順に縦に並ぶ。空のセクションは出さない。見出し(t-md, 700)+ 件数バッジ(4px 角丸、surface-hover 地、fg-2)+ 右に「常時 Claude N 字 · Copilot M 字」(未計測は「未計測 n」と別に数える)。
+- **行:** 1px --line-strong の枠 + 6px 角丸 + surface-2 地のカード状の行。左に 1 行目 = 名前(500)とフラグ、2 行目 = 出どころ(fg-2, small)、必要なら 3 行目 = 「個人 にも同じ名前があります」(accent-text)。右にハーネスごとの状態語(「Claude 有効」「Copilot 無効」)を縦に積む。行の上端は sticky の見出しに隠れないよう `scroll-margin-top` を持つ(WCAG 2.4.11)。
+- **状態語は操作に見せない:** 枠を持たない「印 + 文字」。行の右端は Copilot アプリがスイッチを置く場所なので、枠付きの語はボタンに見える(監査の指摘)。有効 = 緑の塗りの点 + pass-text、条件付き・import 経由 = 緑の破線の点、無効・読まれない = 空の点 + fg-2、不明・未確認 = 破線の点 + 破線の下線。点は塗りではなく枠で描く(コントラストテーマでも消えない)。
 - **フラグ:** 読めない = fault-text の枠、所見 n = fg-2 の枠、未確認 = 破線枠。
 - **プラグイン由来の行:** プラグインの部品(skill・command・agent・MCP)は自分の種別のセクションに並び、出どころが「Plugin: <名前>」。有効・無効はプラグインごとに決まり、常時コストはプラグインの行で数える(二重に数えない)。プラグイン自身の行は「Marketplace: <名前>」。
-- **選択:** select-wash 地 + --accent の枠 + 左端 3px の accent-text バー。hover は surface-hover。
+- **選択:** select-wash 地 + --accent の枠。枠と角丸を持つ行に左端の帯は足さない(side-stripe を避ける)。hover は surface-hover。
 - **キーボード:** 一覧全体でタブストップは 1 つ(rownav.ts の roving tabindex)。↑↓ はセクションをまたいで行を移り、Home / End は端へ、PageDown / PageUp は次 / 前のセクションの先頭行へ(installed-view.ts `nextSectionStart`)。移動と選択は同時。Enter / Space でも選ぶ。テキスト選択で終わったクリックは選択と見なさない。
-- **セマンティクス:** セクションごとに `role="listbox"`(見出しでラベル付け)、行は `role="option"` + `aria-selected`。件数バッジの数は sr-only の「(n 件)」と一緒に見出しの名前に入る。
+- **セマンティクス:** 一覧全体で 1 つの `role="listbox"`(「読み込まれる資産」)、セクションはその中の `role="group"`(見出しでラベル付け)、行は `role="option"` + `aria-selected`。1 列(62rem 未満)では行をクリックすると下の詳細ペインへスクロールする。件数バッジの数は sr-only の「(n 件)」と一緒に見出しの名前に入る。
 
 ### 単位の選択(ScopePicker)
-- ヘッダーの「個人 | プロジェクト▾」の 2 セグメント。個人は押せばすぐ切り替わる。プロジェクト▾ は非モーダルのポップオーバー(`aria-expanded` + `aria-controls`、`role="region"`)を開き、検索・発見したプロジェクトの一覧・git 外/隠したものの表示・フォルダの手動追加・選択中プロジェクトの固定/非表示を持つ。これらは agent-console 自身の `~/.agent-console/projects.json` だけを書く。
+- ヘッダーの「個人 | プロジェクト▾」の 2 セグメント。個人は押せばすぐ切り替わる(`aria-pressed`)。プロジェクト▾ は開くだけのボタンなので `aria-expanded` だけを持ち、選択中かどうかはラベル(「プロジェクト: 名前」)と塗りで示す。プロジェクト▾ は非モーダルのポップオーバー(`aria-expanded` + `aria-controls`、`role="region"`)を開き、検索・発見したプロジェクトの一覧・git 外/隠したものの表示・フォルダの手動追加・選択中プロジェクトの固定/非表示を持つ。これらは agent-console 自身の `~/.agent-console/projects.json` だけを書く。
 - 開くと焦点は検索欄へ、↓ で一覧に入り ↑↓ Home End で移る。Escape で閉じて焦点はトリガーへ戻る。外のクリックと、焦点がパネルの外へ出たときにも閉じる。トラップしない。
 
 ### Table(配布タブの資産一覧)
@@ -295,7 +295,7 @@ components:
 - 既定画面には決してしない: 集約表示が個々の MCP/agent への到達を妨げたことが降格の理由。
 
 ### Forced colors(Windows のコントラストテーマ)
-- 塗りで状態を示す所(選択中のタブ・チップ・単位のセグメント、選択行のバー、トグルのドット)は `forced-color-adjust: none` + Highlight / HighlightText / CanvasText で描き直す。Installed の行は CanvasText の枠、選択行は Highlight の枠 + 4px のバー、有効の状態語は 2px の枠で、色が消えても区別が残る。
+- 塗りで状態を示す所(選択中のタブ・チップ・単位のセグメント、選択行のバー、トグルのドット)は `forced-color-adjust: none` + Highlight / HighlightText / CanvasText で描き直す。Installed の行は CanvasText の枠、選択行は Highlight の 4px のバー(疑似要素だけを `forced-color-adjust: none` にし、行の文字はテーマの色のまま)、有効の状態語は枠で描いた点で、色が消えても区別が残る。
 
 ## Do's and Don'ts
 
@@ -317,7 +317,7 @@ components:
 - **Don't** アクセントの青を装飾・見出し・アイコンに使わない。青は選択・フォーカス・主操作だけ。
 - **Don't** ライトテーマや OS 追従の切り替えを足さない。ダーク固定は方針の一部(`color-scheme: dark`)。
 - **Don't** GitHub Primer の CSS・アイコン・ブランド色そのものを持ち込まない。寄せるのは値と構造だけ。
-- **Don't** 大きい角丸(8px 超)・ピル型のボタン・ambient の浮遊影を持ち込まない。ピルはセクション見出しの件数バッジだけ。
+- **Don't** 大きい角丸(8px 超)・ピル型・ambient の浮遊影・枠のある行の左端の帯を持ち込まない。
 - **Don't** Installed に操作に見える部品(スイッチ・チェックボックス・追加・更新・削除のボタン)を置かない。P4 で公式 CLI 経由の書き込みが入るまで読み取りのみ。
 - **Don't** 左サイドバーや左の単位レールを戻さない。単位はヘッダーの選択と行の出どころで示す。
 - **Don't** 外部アイコンセット・CDN フォント・ネットワーク資産を持ち込まない。全て同梱か自前描画(オフライン + CSP)。

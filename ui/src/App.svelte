@@ -304,7 +304,7 @@
   <header class="topbar">
     <div class="topbar__name">
       <h1>agent-console</h1>
-      <p class="path">{sourceRoot}</p>
+      {#if view === "distribute"}<p class="path">{sourceRoot}</p>{/if}
     </div>
 
     <nav class="tabs" aria-label="画面" inert={frozen}>

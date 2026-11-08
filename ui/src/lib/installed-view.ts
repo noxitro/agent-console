@@ -105,7 +105,9 @@ export function sectionCost(rows: readonly InstalledRow[], harness: HarnessId): 
 export function matchesQuery(row: InstalledRow, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (q === "") return true;
-  return [row.name, row.description ?? "", row.path, row.plugin?.id ?? ""].some((s) => s.toLowerCase().includes(q));
+  return [row.name, row.description ?? "", row.path, row.plugin?.id ?? "", row.plugin?.name ?? "", row.plugin?.marketplace ?? ""].some((s) =>
+    s.toLowerCase().includes(q),
+  );
 }
 
 /**

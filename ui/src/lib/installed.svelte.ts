@@ -126,6 +126,7 @@ export class InstalledState {
     if (this.scope === scope && this.status !== "failed") return;
     this.scope = scope;
     this.selectedId = null;
+    this.clearNotice();
     await this.load();
   }
 
@@ -152,6 +153,19 @@ export class InstalledState {
       return false;
     } finally {
       this.acting = null;
+    }
+  }
+
+  /**
+   * Forget the last project action's result. Called when the owner changes what
+   * the list shows (unit, search, type): otherwise 「…を上に固定しました」 or an
+   * old error would keep standing in the live region in place of the count.
+   */
+  clearNotice(): void {
+    this.lastAction = "";
+    if (this.acting === null) {
+      this.actionError = "";
+      this.failedAction = null;
     }
   }
 

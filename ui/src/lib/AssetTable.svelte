@@ -879,8 +879,8 @@
   /* --t-micro, the floor of the type scale. It was 9px, below that floor, to
      keep the column narrow; the ids are short enough that the column only
      widens a little, and a label too small to read labels nothing. --fg-2,
-     not --fg-3: --fg-3 on the header ground measures 3.27:1, below the 4.5:1
-     that text this size needs; --fg-2 is 5.29:1. The face is mono because
+     not --fg-3: --fg-3 on the header ground measures 3.7:1 (DESIGN.md Colors), below the 4.5:1
+     that text this size needs; --fg-2 is 6.9:1. The face is mono because
      these are target ids issued by the tools (DESIGN: 等幅は識別子ルール). */
   .legend {
     margin-top: 2px;

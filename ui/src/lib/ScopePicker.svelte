@@ -115,6 +115,7 @@
     <button
       type="button"
       class="seg"
+      class:is-current={!projectChosen}
       aria-pressed={!projectChosen}
       onclick={() => {
         close(false);
@@ -124,7 +125,7 @@
     <button
       type="button"
       class="seg seg--project"
-      aria-pressed={projectChosen}
+      class:is-current={projectChosen}
       aria-expanded={open}
       aria-controls="project-panel"
       bind:this={trigger}
@@ -308,11 +309,11 @@
     border-right: 0;
   }
 
-  .seg:hover:not([aria-pressed="true"]) {
+  .seg:hover:not(.is-current) {
     background: var(--surface-hover);
   }
 
-  .seg[aria-pressed="true"] {
+  .seg.is-current {
     background: var(--accent);
     color: var(--on-accent);
   }
@@ -565,15 +566,24 @@
   }
 
   @media (forced-colors: active) {
-    .seg[aria-pressed="true"] {
+    .seg.is-current {
       forced-color-adjust: none;
       background: Highlight;
       color: HighlightText;
     }
 
     .proj[aria-current="true"] {
+      position: relative;
+    }
+
+    /* Only the mark opts out of the theme; the text keeps its colours. */
+    .proj[aria-current="true"]::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
       forced-color-adjust: none;
-      box-shadow: inset 4px 0 0 Highlight;
+      background: Highlight;
     }
 
     .panel {

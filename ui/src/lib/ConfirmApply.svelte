@@ -379,7 +379,7 @@
      StatusDrawer already sets this same string in the interface's own face.
      Not --fg-3 either: that token is for disabled framing and dormant
      conductors (「本文には使わない」), and on this dialog's --surface-2 ground
-     it measures 3.27:1 — under the 4.5:1 this size needs. --fg-2 is 5.29:1 and
+     it measures 3.7:1 (DESIGN.md Colors) — under the 4.5:1 this size needs. --fg-2 is 6.9:1 and
      is quiet enough to keep the reading first. */
   .detail--source {
     font-size: var(--t-micro);

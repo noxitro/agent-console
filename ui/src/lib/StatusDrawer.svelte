@@ -316,7 +316,7 @@
   /*
    * The engine's own sentence, under its reading. Not mono (DESIGN: 等幅は
    * 識別子ルール — 「文章には決して使わない」) and not --fg-3 (that token is for
-   * disabled framing and dormant conductors, and measures 3.27:1 here).
+   * disabled framing and dormant conductors, and measures 3.7:1 (DESIGN.md Colors) here).
    */
   .detail--source {
     grid-column: 2 / -1;
