@@ -103,14 +103,14 @@
 
   header p {
     margin-top: var(--gap-2);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .facts {
     margin: 0;
     padding: var(--gap-3) var(--gap-3) var(--gap-3) var(--gap-5);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper-inset);
+    border: 1px solid var(--line-strong);
+    background: var(--surface-inset);
     font-size: var(--t-small);
   }
 
@@ -121,7 +121,7 @@
   code {
     font-family: var(--mono);
     padding: 0 0.15em;
-    background: var(--paper-panel);
+    background: var(--surface-2);
   }
 
   footer {

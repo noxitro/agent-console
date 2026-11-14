@@ -557,8 +557,10 @@
     flex-direction: column;
     min-height: 0;
     min-width: 0;
-    background: var(--paper);
-    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
   }
 
   /* Toolbar ----------------------------------------------------------- */
@@ -570,8 +572,8 @@
     align-items: center;
     gap: var(--gap-3);
     padding: var(--gap-2) var(--gap-3);
-    border-bottom: 1px solid var(--rule);
-    background: var(--paper-panel);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
   }
 
   .search {
@@ -581,13 +583,14 @@
     flex: 1 1 14rem;
     min-width: 10rem;
     padding: 0 var(--gap-2);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper);
-    color: var(--ink-2);
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    background: var(--surface-inset);
+    color: var(--fg-2);
   }
 
   .search:focus-within {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: 1px;
   }
 
@@ -597,7 +600,7 @@
     min-height: 2rem;
     border: 0;
     background: transparent;
-    color: var(--ink);
+    color: var(--fg);
     font: inherit;
     font-size: var(--t-body);
   }
@@ -606,9 +609,9 @@
     outline: none;
   }
 
-  /* The browser default placeholder grey is 4.1:1 on paper; --ink-2 is 5.5:1. */
+  /* The browser default placeholder grey is 4.1:1 on these surfaces; --fg-2 is 7.5:1. */
   input::placeholder {
-    color: var(--ink-2);
+    color: var(--fg-2);
     opacity: 1;
   }
 
@@ -617,7 +620,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0;
-    border: 1px solid var(--rule-strong);
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
   }
 
   /*
@@ -630,8 +635,8 @@
     min-height: 2rem;
     padding: 0 var(--gap-3);
     border: 0;
-    border-right: 1px solid var(--rule);
-    background: var(--paper);
+    border-right: 1px solid var(--line);
+    background: var(--surface-2);
     font-size: var(--t-small);
     white-space: nowrap;
     cursor: pointer;
@@ -642,12 +647,12 @@
   }
 
   .chip[aria-checked="true"] {
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   .chip:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
@@ -701,7 +706,7 @@
     flex: none;
     margin-left: auto;
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* Table ------------------------------------------------------------- */
@@ -738,15 +743,15 @@
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink-2);
-    background: var(--paper-panel);
-    border-bottom: 1px solid var(--rule-strong);
+    color: var(--fg-2);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line-strong);
   }
 
   tbody th,
   tbody td {
     padding: var(--gap-1) var(--gap-3);
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line);
     text-align: left;
     font-weight: 400;
     vertical-align: middle;
@@ -755,17 +760,17 @@
   /* The affordance for "this whole row is the target": the row lights up as a
      whole, not the name alone. */
   tbody tr:hover {
-    background: var(--paper-panel);
+    background: var(--surface-2);
   }
 
   tbody tr:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
   tbody tr.is-selected {
-    background: var(--caution-wash);
-    box-shadow: inset 2px 0 0 var(--ink);
+    background: var(--select-wash);
+    box-shadow: inset 2px 0 0 var(--accent-text);
   }
 
   /* A contrast theme drops box-shadow and repaints the wash, which left the
@@ -787,7 +792,7 @@
   }
 
   tbody tr.is-disabled .row-name {
-    color: var(--ink-2);
+    color: var(--fg-2);
     text-decoration: line-through;
     text-decoration-thickness: 1px;
   }
@@ -799,12 +804,12 @@
   }
 
   .col-meta {
-    color: var(--ink-2);
+    color: var(--fg-2);
     font-size: var(--t-small);
   }
 
   .col-date {
-    color: var(--ink-2);
+    color: var(--fg-2);
     font-size: var(--t-small);
     white-space: nowrap;
   }
@@ -830,13 +835,13 @@
   /* The switch (`.toggle`) is shared with the detail pane and lives in app.css;
      the delete button keeps the same focus ring and busy look beside it. */
   .icon-btn:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: 1px;
   }
 
   .icon-btn[aria-busy="true"] {
-    color: var(--ink-3);
-    border-color: var(--rule);
+    color: var(--fg-3);
+    border-color: var(--line);
   }
 
   .icon-btn {
@@ -847,7 +852,7 @@
     height: 2rem;
     border: 1px solid transparent;
     background: transparent;
-    color: var(--ink-2);
+    color: var(--fg-2);
     cursor: pointer;
   }
 
@@ -873,9 +878,9 @@
 
   /* --t-micro, the floor of the type scale. It was 9px, below that floor, to
      keep the column narrow; the ids are short enough that the column only
-     widens a little, and a label too small to read labels nothing. --ink-2,
-     not --ink-3: --ink-3 on the header ground measures 3.27:1, below the 4.5:1
-     that text this size needs; --ink-2 is 5.29:1. The face is mono because
+     widens a little, and a label too small to read labels nothing. --fg-2,
+     not --fg-3: --fg-3 on the header ground measures 3.7:1 (DESIGN.md Colors), below the 4.5:1
+     that text this size needs; --fg-2 is 6.9:1. The face is mono because
      these are target ids issued by the tools (DESIGN: 等幅は識別子ルール). */
   .legend {
     margin-top: 2px;
@@ -885,7 +890,7 @@
        at the widths where it used to fit at 9px. */
     letter-spacing: -0.02em;
     text-transform: none;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .legend__item {
@@ -900,7 +905,7 @@
 
   .empty {
     padding: var(--gap-5);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* 破線 = 実在しない・未確定 (DESIGN: Shapes) — the same mark the 未取得 badges
@@ -909,7 +914,7 @@
   .empty--unmeasured {
     margin: var(--gap-3);
     padding: var(--gap-4);
-    border: 1px dashed var(--rule-strong);
-    background: var(--paper-inset);
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-inset);
   }
 </style>

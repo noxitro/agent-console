@@ -297,6 +297,30 @@ describe("Installed", () => {
     expect(reach(pack, "copilot")!.state).toBe("enabled");
     const declared = find("plugin", "declared@demo-market", "project");
     expect(declared.findings![0]!.code).toBe("plugin.enabled-not-installed");
+    expect(pack.plugin).toEqual({ id: "tool-pack@demo-market", name: "tool-pack", marketplace: "demo-market" });
+    expect(declared.plugin).toEqual({ id: "declared@demo-market", name: "declared", marketplace: "demo-market" });
+  });
+
+  it("lists a plugin's components as rows that name the plugin, counted once on the plugin", () => {
+    const { find, all } = rows();
+    const part = find("skill", "pack-skill", "user");
+    expect(part).toMatchObject({ origin: "plugin", description: "From the pack.", plugin: { id: "tool-pack@demo-market", name: "tool-pack" } });
+    expect(reach(part, "copilot")).toMatchObject({ state: "enabled" });
+    expect(reach(part, "copilot")!.cost).toBeUndefined();
+    // Only the plugin's own row carries the cost of its parts.
+    expect(all.filter((r) => r.plugin?.id === "tool-pack@demo-market" && r.reach.some((x) => x.cost !== undefined)).map((r) => r.kind)).toEqual(["plugin"]);
+  });
+
+  it("marks a name held in more than one unit, without saying which one wins", () => {
+    const { repoA } = seed();
+    seedAssets(repoA);
+    skill(path.join(home, ".claude", "skills"), "shared-skill", "The user's copy.");
+    const r = readInstalled({ root: repoA });
+    const byScope = (scope: string): InstalledRow => r.rows.find((x) => x.kind === "skill" && x.name === "shared-skill" && x.scope === scope)!;
+    expect(byScope("user").alsoIn).toEqual(["project"]);
+    expect(byScope("project").alsoIn).toEqual(["user"]);
+    expect(r.rows.filter((x) => x.kind === "instructions").every((x) => x.alsoIn === undefined)).toBe(true);
+    expect(r.rows.find((x) => x.name === "linked-skill")!.alsoIn).toBeUndefined();
   });
 
   it("sums the totals from the enabled reaches only", () => {

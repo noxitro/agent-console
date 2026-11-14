@@ -39,8 +39,12 @@ try {
     await page.goto(server.launchUrl);
     await page.getByRole("heading", { name: "agent-console" }).waitFor();
     assert(new URL(page.url()).search === "", `url still carries a query: ${page.url()}`);
-    // Installed is the default view since P2; everything below is the 配布 view.
+    // Installed is the default view since P2 (sections by kind, the unit chosen
+    // in the header); everything below is the 配布 view.
+    await page.locator(".sections .sec__head h3").first().waitFor({ timeout: 15000 });
+    assert((await page.getByRole("group", { name: "単位" }).getByRole("button").count()) === 2, "no 個人 / プロジェクト picker in the header");
     await page.getByRole("button", { name: "配布", exact: true }).click();
+    assert((await page.getByRole("group", { name: "単位" }).count()) === 0, "the unit picker stayed on the 配布 view");
     return page.url();
   });
 

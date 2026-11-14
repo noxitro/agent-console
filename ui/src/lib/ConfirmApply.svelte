@@ -259,15 +259,15 @@
   }
 
   header p {
-    color: var(--ink-2);
+    color: var(--fg-2);
     max-width: 62ch;
   }
 
   /* 破線は「実在しない/未確定/但し書き」の記号 (DESIGN: Shapes). */
   .scope-note {
     padding: var(--gap-2) var(--gap-3);
-    border: 1px dashed var(--rule-strong);
-    background: var(--paper-inset);
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-inset);
     max-width: 66ch;
   }
 
@@ -280,7 +280,7 @@
     flex-wrap: wrap;
     gap: 0;
     margin: 0;
-    border: 1px solid var(--rule-strong);
+    border: 1px solid var(--line-strong);
   }
 
   .summary div {
@@ -288,7 +288,7 @@
     align-items: baseline;
     gap: var(--gap-2);
     padding: var(--gap-2) var(--gap-4);
-    border-right: 1px solid var(--rule);
+    border-right: 1px solid var(--line);
   }
 
   .summary div:last-child {
@@ -298,7 +298,7 @@
   dt {
     font-size: var(--t-micro);
     letter-spacing: 0.08em;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   dd {
@@ -330,18 +330,18 @@
     padding: 0;
     max-height: clamp(12rem, 100dvh - 38rem, 22rem);
     overflow-y: auto;
-    border: 1px solid var(--rule);
-    background: var(--paper-panel);
+    border: 1px solid var(--line);
+    background: var(--surface-2);
   }
 
   .targets ul:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
   .targets li {
     padding: var(--gap-2) var(--gap-3);
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line);
   }
 
   .targets li:last-child {
@@ -359,7 +359,7 @@
     flex: none;
     width: 6rem;
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .kind {
@@ -369,7 +369,7 @@
 
   .detail {
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* The engine's own sentence, kept below its Japanese reading.
@@ -377,13 +377,13 @@
      ターゲット名・コード・差分本文 and then says 「文章には決して使わない」 —
      unconditionally. 「機械の引用だから」 is not one of the listed cases, and
      StatusDrawer already sets this same string in the interface's own face.
-     Not --ink-3 either: that token is for disabled framing and dormant
-     conductors (「本文には使わない」), and on this dialog's --paper-panel ground
-     it measures 3.27:1 — under the 4.5:1 this size needs. --ink-2 is 5.29:1 and
+     Not --fg-3 either: that token is for disabled framing and dormant
+     conductors (「本文には使わない」), and on this dialog's --surface-2 ground
+     it measures 3.7:1 (DESIGN.md Colors) — under the 4.5:1 this size needs. --fg-2 is 6.9:1 and
      is quiet enough to keep the reading first. */
   .detail--source {
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* DESIGN: 等幅は識別子ルール — the narrowings are a Japanese sentence
@@ -395,8 +395,8 @@
 
   .backup {
     padding: var(--gap-3);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper-inset);
+    border: 1px solid var(--line-strong);
+    background: var(--surface-inset);
     max-width: 66ch;
   }
 

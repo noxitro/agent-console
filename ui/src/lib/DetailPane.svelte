@@ -322,15 +322,16 @@
     min-width: 0;
     padding: var(--gap-4);
     overflow: auto;
-    background: var(--paper);
-    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-panel);
   }
 
   .detail__empty {
     margin: auto;
     max-width: 26ch;
     text-align: center;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .detail__head {
@@ -348,12 +349,12 @@
     font-size: var(--t-small);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--ink-2);
+    color: var(--fg-2);
     margin-bottom: var(--gap-2);
   }
 
   .detail__desc {
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .facts {
@@ -362,8 +363,8 @@
     gap: var(--gap-3);
     margin: 0;
     padding: var(--gap-3);
-    border: 1px solid var(--rule);
-    background: var(--paper-inset);
+    border: 1px solid var(--line);
+    background: var(--surface-inset);
   }
 
   .facts__wide {
@@ -373,7 +374,7 @@
   dt {
     font-size: var(--t-micro);
     letter-spacing: 0.08em;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   dd {
@@ -396,7 +397,7 @@
     align-items: baseline;
     column-gap: var(--gap-2);
     padding: var(--gap-2) 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line);
   }
 
   .targets li .path,
@@ -415,7 +416,7 @@
 
   .targets__detail {
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /*
@@ -423,13 +424,13 @@
    *
    * Smaller and quieter so the note reads first, but on screen — not mono:
    * DESIGN's 等幅は識別子ルール ends 「文章には決して使わない」, and this is a
-   * sentence. --ink-2 rather than --ink-3, which is for disabled framing and
-   * dormant conductors and measures 3.27:1 here.
+   * sentence. --fg-2 rather than --fg-3, which is for disabled framing and
+   * dormant conductors and measures 3.7:1 (DESIGN.md Colors) here.
    */
   .targets__detail--source,
   .finding-source {
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .finding-source {
@@ -443,15 +444,15 @@
   }
 
   .shares {
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .targets__unknown {
     padding: var(--gap-2);
     margin-bottom: var(--gap-2);
-    border: 1px dashed var(--rule-strong);
-    background: var(--paper-inset);
-    color: var(--ink-2);
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-inset);
+    color: var(--fg-2);
   }
 
   /* The switch and the badge are shared with the table (app.css). The pane has
@@ -471,7 +472,7 @@
     flex-wrap: wrap;
     gap: var(--gap-2);
     padding: var(--gap-2) 0;
-    border-bottom: 1px solid var(--rule);
+    border-bottom: 1px solid var(--line);
   }
 
   .level {
@@ -479,7 +480,7 @@
     padding: 0 var(--gap-1);
     border: 1px solid currentColor;
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .findings li.is-error .level {
@@ -491,7 +492,7 @@
     flex: none;
     font-family: var(--mono);
     font-size: var(--t-micro);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   /* Ops --------------------------------------------------------------- */
@@ -502,18 +503,18 @@
     gap: var(--gap-2);
     margin-top: auto;
     padding-top: var(--gap-3);
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
 
   .detail__note {
     flex: 1 1 100%;
     font-size: var(--t-small);
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   code {
     font-family: var(--mono);
-    background: var(--paper-inset);
+    background: var(--surface-inset);
     padding: 0 0.15em;
   }
 

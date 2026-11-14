@@ -1,11 +1,13 @@
 /**
- * State of the Installed view: which unit is chosen, what was read for it, and
- * how the list is narrowed. Everything it shows comes from `ac projects` and
- * `ac installed`; nothing is computed here that the engine did not report,
- * except filtering and the per-project sum of the three units.
+ * State of the Installed view: which unit is chosen (個人, or a project — which
+ * brings its プロジェクト and ローカル units with it), what was read for it, and
+ * how the list is narrowed (search and type). Everything it shows comes from
+ * `ac projects` and `ac installed`; nothing is computed here that the engine did
+ * not report, except filtering and sums of what it reported.
  */
 
 import { EngineError, installed, projectAction, projects } from "./engine.js";
+import { matchesQuery } from "./installed-view.js";
 import type {
   HarnessId,
   InstalledJson,
@@ -15,15 +17,10 @@ import type {
   ProjectEntry,
   ProjectsJson,
   ReachState,
-  ScopeKind,
 } from "./scope-contract.js";
 
 export type Status = "idle" | "running" | "ready" | "failed";
 export type KindFilter = "all" | InstalledKind;
-export type HarnessFilter = "all" | HarnessId;
-export type UnitFilter = "all" | ScopeKind;
-/** `loaded`: some harness loads it every session. `attention`: unknown, unconfirmed, unreadable or with findings. */
-export type StateFilter = "all" | "loaded" | "attention";
 
 /** The value of `scope` that means "the user unit only". */
 export const USER_SCOPE = "user";
@@ -60,9 +57,6 @@ export class InstalledState {
   selectedId = $state<string | null>(null);
   query = $state("");
   kind = $state<KindFilter>("all");
-  harness = $state<HarnessFilter>("all");
-  unit = $state<UnitFilter>("all");
-  stateFilter = $state<StateFilter>("all");
 
   projectQuery = $state("");
   showNonGit = $state(false);
@@ -87,22 +81,10 @@ export class InstalledState {
 
   readonly allRows = $derived<InstalledRow[]>(this.data?.rows ?? []);
 
-  readonly rows = $derived.by<InstalledRow[]>(() => {
-    const q = this.query.trim().toLowerCase();
-    return this.allRows.filter((row) => {
-      if (this.kind !== "all" && row.kind !== this.kind) return false;
-      if (this.unit !== "all" && row.scope !== this.unit) return false;
-      if (this.harness !== "all" && !row.reach.some((r) => r.harness === this.harness)) return false;
-      if (this.stateFilter === "loaded" && !row.reach.some((r) => r.state === "enabled" && (this.harness === "all" || r.harness === this.harness))) return false;
-      if (this.stateFilter === "attention" && !needsAttention(row)) return false;
-      if (q === "") return true;
-      return (
-        row.name.toLowerCase().includes(q) ||
-        (row.description ?? "").toLowerCase().includes(q) ||
-        row.path.toLowerCase().includes(q)
-      );
-    });
-  });
+  /** Searched but not yet narrowed by type: what the type filter's counts are of. */
+  readonly searched = $derived<InstalledRow[]>(this.allRows.filter((row) => matchesQuery(row, this.query)));
+
+  readonly rows = $derived<InstalledRow[]>(this.searched.filter((row) => this.kind === "all" || row.kind === this.kind));
 
   readonly selected = $derived<InstalledRow | null>(this.allRows.find((r) => r.id === this.selectedId) ?? null);
 
@@ -144,7 +126,7 @@ export class InstalledState {
     if (this.scope === scope && this.status !== "failed") return;
     this.scope = scope;
     this.selectedId = null;
-    this.unit = "all";
+    this.clearNotice();
     await this.load();
   }
 
@@ -171,6 +153,19 @@ export class InstalledState {
       return false;
     } finally {
       this.acting = null;
+    }
+  }
+
+  /**
+   * Forget the last project action's result. Called when the owner changes what
+   * the list shows (unit, search, type): otherwise 「…を上に固定しました」 or an
+   * old error would keep standing in the live region in place of the count.
+   */
+  clearNotice(): void {
+    this.lastAction = "";
+    if (this.acting === null) {
+      this.actionError = "";
+      this.failedAction = null;
     }
   }
 

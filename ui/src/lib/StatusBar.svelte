@@ -161,8 +161,10 @@
     flex-wrap: wrap;
     align-items: stretch;
     gap: 0;
-    border: 1px solid var(--rule-strong);
-    background: var(--paper-panel);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+    background: var(--surface-2);
   }
 
   .cell {
@@ -171,34 +173,34 @@
     gap: var(--gap-3);
     padding: var(--gap-2) var(--gap-4);
     border: 0;
-    border-right: 1px solid var(--rule);
+    border-right: 1px solid var(--line);
     background: transparent;
     font-size: var(--t-small);
     cursor: pointer;
   }
 
   .cell:hover {
-    background: var(--paper);
+    background: var(--surface);
   }
 
   .cell.is-open {
-    background: var(--paper);
-    box-shadow: inset 0 -2px 0 var(--ink);
+    background: var(--surface);
+    box-shadow: inset 0 -2px 0 var(--accent-text);
   }
 
   .cell:focus-visible {
-    outline: 2px solid var(--ink);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
 
   .cell__label {
     font-size: var(--t-micro);
     letter-spacing: 0.1em;
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .cell__value--quiet {
-    color: var(--ink-2);
+    color: var(--fg-2);
   }
 
   .is-fault {
@@ -208,7 +210,7 @@
 
   .is-warn,
   .is-pending {
-    color: var(--ink);
+    color: var(--fg);
     font-weight: 500;
   }
 
